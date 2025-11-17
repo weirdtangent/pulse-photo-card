@@ -1,7 +1,6 @@
 {
   "name": "Pulse Photo Card",
-  "render_readme": true,
-  "domains": ["lovelace"],
-  "iot_class": "Local Push"
+  "filename": "pulse-photo-card.js",
+  "render_readme": true
 }
 
