@@ -1,6 +1,6 @@
 # Pulse Photo Card
 
-![Pulse Photo Card](assets/logo.png)
+![Pulse Photo Card](https://raw.githubusercontent.com/weirdtangent/pulse-photo-card/main/assets/logo.png)
 
 A beautiful, full-screen photo frame card for Home Assistant with smooth crossfades, clock overlay, and optional navigation cycling for kiosk displays.
 
