@@ -1,6 +1,5 @@
 {
   "name": "Pulse Photo Card",
   "content_in_root": true,
-  "type": "plugin",
   "filename": "pulse-photo-card.js"
 }
