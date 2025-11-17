@@ -1,8 +1,6 @@
 # Pulse Photo Card
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/weirdtangent/pulse-photo-card/main/assets/logo.png" alt="Pulse Photo Card" width="640" />
-</p>
+![Pulse Photo Card](https://raw.githubusercontent.com/weirdtangent/pulse-photo-card/main/assets/logo.png)
 
 A beautiful, full-screen photo frame card for Home Assistant with smooth crossfades, clock overlay, and optional navigation cycling for kiosk displays.
 
@@ -27,7 +25,7 @@ A beautiful, full-screen photo frame card for Home Assistant with smooth crossfa
 
 ### Manual Installation
 
-1. Download `dist/pulse-photo-card.js` from this repository
+1. Download `pulse-photo-card.js` from this repository
 2. Copy it to your Home Assistant `config/www/` directory
 3. In Home Assistant, go to **Settings → Dashboards → ⋮ → Resources → + Add Resource**:
    - URL: `/local/pulse-photo-card.js?v=1`

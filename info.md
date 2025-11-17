@@ -25,7 +25,7 @@ A beautiful, full-screen photo frame card for Home Assistant with smooth crossfa
 
 ### Manual Installation
 
-1. Download `dist/pulse-photo-card.js` from this repository
+1. Download `pulse-photo-card.js` from this repository
 2. Copy it to your Home Assistant `config/www/` directory
 3. In Home Assistant, go to **Settings → Dashboards → ⋮ → Resources → + Add Resource**:
    - URL: `/local/pulse-photo-card.js?v=1`

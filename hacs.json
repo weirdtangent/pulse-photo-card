@@ -1,6 +1,6 @@
 {
   "name": "Pulse Photo Card",
   "filename": "pulse-photo-card.js",
+  "content_in_root": true,
   "render_readme": true
 }
-
