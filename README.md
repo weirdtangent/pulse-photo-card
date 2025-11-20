@@ -14,6 +14,17 @@ A beautiful, full-screen photo frame card for Home Assistant with smooth crossfa
 - **Navigation cycling** - Optional tap-to-cycle through multiple dashboards (perfect for kiosks)
 - **Responsive design** - Adapts to any screen size with responsive typography
 
+## Preview
+
+I used ?disable_km to turn off Kiosk mode so I could show a preview. But, the idea of this card is
+to ONLY show a picture, suitable as a photo library and burn-in preventer for your kiosk device
+when not in use.
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/weirdtangent/pulse-photo-card/main/assets/sample.png" alt="Pulse Photo Card sample" width="640" />
+</p>
+
+
 ## Installation
 
 ### Via HACS (Recommended)
