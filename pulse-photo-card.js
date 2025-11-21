@@ -9,6 +9,11 @@ class PulsePhotoCard extends HTMLElement {
     this._timeEl = null;
     this._dateEl = null;
     this._homePath = null;
+    this._nowPlayingEl = null;
+    this._nowPlayingLabelEl = null;
+    this._nowPlayingTextEl = null;
+    this._nowPlayingLastText = '';
+    this._resolvedNowPlayingEntity = null;
   }
 
   setConfig(config) {
@@ -19,17 +24,40 @@ class PulsePhotoCard extends HTMLElement {
     this._config = {
       fade_ms: 1000,
       secondary_urls: [],
+      now_playing_entity: null,
+      now_playing_label: 'Now Playing',
       ...config,
     };
+
+    if (typeof this._config.now_playing_entity === 'string') {
+      const trimmed = this._config.now_playing_entity.trim();
+      this._config.now_playing_entity = trimmed.length > 0 ? trimmed : null;
+    }
+
+    if (!this._config.now_playing_label) {
+      this._config.now_playing_label = 'Now Playing';
+    }
 
     // Ensure secondary_urls is an array
     if (!Array.isArray(this._config.secondary_urls)) {
       this._config.secondary_urls = [];
     }
 
+    this._resolvedNowPlayingEntity = this._resolveNowPlayingEntity();
+    const showNowPlaying = Boolean(this._resolvedNowPlayingEntity);
+
     if (!this.shadowRoot) {
       this.attachShadow({ mode: 'open' });
     }
+
+    const nowPlayingMarkup = showNowPlaying
+      ? `
+              <div class="now-playing">
+                <div class="now-playing__label"></div>
+                <div class="now-playing__text"></div>
+              </div>
+            `
+      : '';
 
     this.shadowRoot.innerHTML = `
       <style>
@@ -84,6 +112,13 @@ class PulsePhotoCard extends HTMLElement {
           );
         }
 
+        .overlay__content {
+          display: flex;
+          flex-direction: column;
+          gap: clamp(18px, 3vw, 28px);
+          width: 100%;
+        }
+
         .clock {
           text-shadow: 0 4px 12px rgba(0, 0, 0, 0.9);
           color: #fff;
@@ -102,6 +137,39 @@ class PulsePhotoCard extends HTMLElement {
           font-weight: 400;
           opacity: 0.85;
         }
+
+        .now-playing {
+          pointer-events: none;
+          background: rgba(16, 24, 32, 0.82);
+          border-radius: 22px;
+          padding: clamp(12px, 2vw, 18px) clamp(16px, 3vw, 28px);
+          max-width: min(640px, 90vw);
+          box-shadow: 0 15px 45px rgba(0, 0, 0, 0.45);
+          opacity: 0;
+          transform: translateY(16px);
+          transition: opacity 180ms ease, transform 180ms ease;
+        }
+
+        .now-playing.visible {
+          opacity: 1;
+          transform: translateY(0);
+        }
+
+        .now-playing__label {
+          font-size: clamp(0.95rem, 2vw, 1.4rem);
+          font-weight: 600;
+          letter-spacing: 0.08em;
+          text-transform: uppercase;
+          color: rgba(255, 255, 255, 0.7);
+          margin-bottom: 0.35em;
+        }
+
+        .now-playing__text {
+          font-size: clamp(1.1rem, 2.6vw, 2rem);
+          font-weight: 400;
+          color: #fff;
+          line-height: 1.3;
+        }
       </style>
 
       <ha-card>
@@ -110,9 +178,12 @@ class PulsePhotoCard extends HTMLElement {
           <img class="layer layer-b" />
         </div>
         <div class="overlay">
-          <div class="clock">
-            <div class="clock__time">--:--</div>
-            <div class="clock__date">Loading…</div>
+          <div class="overlay__content">
+            <div class="clock">
+              <div class="clock__time">--:--</div>
+              <div class="clock__date">Loading…</div>
+            </div>
+            ${nowPlayingMarkup}
           </div>
         </div>
       </ha-card>
@@ -126,6 +197,12 @@ class PulsePhotoCard extends HTMLElement {
     };
     this._timeEl = this.shadowRoot.querySelector('.clock__time');
     this._dateEl = this.shadowRoot.querySelector('.clock__date');
+    this._nowPlayingEl = this.shadowRoot.querySelector('.now-playing');
+    this._nowPlayingLabelEl = this.shadowRoot.querySelector('.now-playing__label');
+    this._nowPlayingTextEl = this.shadowRoot.querySelector('.now-playing__text');
+    if (this._nowPlayingLabelEl) {
+      this._nowPlayingLabelEl.textContent = this._config.now_playing_label || 'Now Playing';
+    }
     
     // Store the home path (current path when card is initialized)
     this._homePath = window.location.pathname;
@@ -145,6 +222,7 @@ class PulsePhotoCard extends HTMLElement {
     }
     
     this._startClock();
+    this._updateNowPlaying();
   }
 
   set hass(hass) {
@@ -161,21 +239,17 @@ class PulsePhotoCard extends HTMLElement {
     }
 
     const entity = hass.states?.[this._config.entity];
-    if (!entity) {
-      return;
+    if (entity) {
+      const newRaw = entity.state;
+      if (newRaw && newRaw !== 'unknown' && newRaw !== 'unavailable') {
+        if (newRaw !== this._currentRaw || !this._currentUrl) {
+          this._currentRaw = newRaw;
+          this._loadNewImage(newRaw);
+        }
+      }
     }
 
-    const newRaw = entity.state;
-    if (!newRaw || newRaw === 'unknown' || newRaw === 'unavailable') {
-      return;
-    }
-
-    if (newRaw === this._currentRaw && this._currentUrl) {
-      return;
-    }
-
-    this._currentRaw = newRaw;
-    this._loadNewImage(newRaw);
+    this._updateNowPlaying();
   }
 
   async _loadNewImage(rawPath) {
@@ -252,6 +326,89 @@ class PulsePhotoCard extends HTMLElement {
     next.src = url;
   }
 
+  _updateNowPlaying() {
+    if (!this._nowPlayingEl) {
+      return;
+    }
+
+    const targetEntity = this._resolvedNowPlayingEntity;
+    if (!targetEntity) {
+      this._nowPlayingEl.classList.remove('visible');
+      if (this._nowPlayingTextEl) {
+        this._nowPlayingTextEl.textContent = '';
+      }
+      return;
+    }
+
+    const entity = this._hass?.states?.[targetEntity];
+    const text = this._formatNowPlaying(entity);
+
+    if (text) {
+      if (this._nowPlayingTextEl && text !== this._nowPlayingLastText) {
+        this._nowPlayingTextEl.textContent = text;
+        this._nowPlayingLastText = text;
+      }
+      this._nowPlayingEl.classList.add('visible');
+    } else {
+      if (this._nowPlayingTextEl && this._nowPlayingLastText) {
+        this._nowPlayingTextEl.textContent = '';
+      }
+      this._nowPlayingLastText = '';
+      this._nowPlayingEl.classList.remove('visible');
+    }
+  }
+
+  _formatNowPlaying(entity) {
+    if (!entity) {
+      return '';
+    }
+
+    const rawState = `${entity.state ?? ''}`;
+    const normalizedState = rawState.toLowerCase();
+    const attrs = entity.attributes || {};
+    const entityId = entity.entity_id || '';
+    const normalizeText = (value) => {
+      if (value == null) {
+        return '';
+      }
+      if (typeof value === 'string') {
+        return value.trim();
+      }
+      return String(value).trim();
+    };
+
+    if (entityId.startsWith('sensor.')) {
+      const cleanState = normalizeText(rawState);
+      if (!cleanState || cleanState === 'unknown' || cleanState === 'unavailable') {
+        return '';
+      }
+      return cleanState;
+    }
+
+    const activeStates = new Set(['playing', 'on', 'buffering', 'paused']);
+    if (activeStates.size > 0 && !activeStates.has(normalizedState)) {
+      return '';
+    }
+
+    const title =
+      normalizeText(attrs.media_title) ||
+      normalizeText(attrs.media_episode_title) ||
+      normalizeText(attrs.media_album_name) ||
+      normalizeText(attrs.media_content_id);
+
+    const artist =
+      normalizeText(attrs.media_artist) ||
+      normalizeText(attrs.media_album_artist) ||
+      normalizeText(attrs.media_series_title) ||
+      normalizeText(attrs.app_name);
+
+    if (title && artist) {
+      return `${artist} — ${title}`;
+    }
+
+    return title || artist || '';
+  }
+
   getCardSize() {
     return 1;
   }
@@ -298,6 +455,35 @@ class PulsePhotoCard extends HTMLElement {
 
     this._timeEl.textContent = timeFormatter.format(now);
     this._dateEl.textContent = dateFormatter.format(now);
+  }
+
+  _resolveNowPlayingEntity() {
+    const raw = this._config?.now_playing_entity;
+    if (!raw) {
+      return null;
+    }
+    if (typeof raw === 'string' && raw.trim().toLowerCase() === 'auto') {
+      const pulseHost = this._extractPulseHostFromQuery();
+      if (!pulseHost) {
+        return null;
+      }
+      return `sensor.${this._sanitizeHostname(pulseHost)}_now_playing`;
+    }
+    return raw;
+  }
+
+  _extractPulseHostFromQuery() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const value = params.get('pulse_host');
+      return value ? value.trim() : null;
+    } catch (err) {
+      return null;
+    }
+  }
+
+  _sanitizeHostname(value) {
+    return value.toLowerCase().replace(/[-.]/g, '_');
   }
 
   _findUrlIndex(path, secondaryUrls, homePath) {

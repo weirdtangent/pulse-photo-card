@@ -8,6 +8,7 @@ A beautiful, full-screen photo frame card for Home Assistant with smooth crossfa
 
 - **Smooth crossfades** - Double-buffered image transitions with no white flash
 - **Clock overlay** - Displays current time and date with automatic locale/timezone support
+- **Now Playing badge** - Optional artist/title ribbon powered by any HA entity
 - **Media source support** - Works with Home Assistant's media browser and signed URLs
 - **Navigation cycling** - Optional tap-to-cycle through multiple dashboards (perfect for kiosks)
 - **Responsive design** - Adapts to any screen size with responsive typography
@@ -53,12 +54,24 @@ secondary_urls:
   - /dashboard-weather
 ```
 
+### With Now Playing Badge
+
+```yaml
+type: custom:pulse-photo-card
+entity: sensor.pulse_current_photo_url
+now_playing_entity: media_player.pulse_bedroom
+```
+
+Set `now_playing_entity: auto` and include `?pulse_host=<hostname>` in the kiosk URL (PulseOS handles this automatically) to have the card follow `sensor.<hostname>_now_playing` per device.
+
 ## Configuration Options
 
 | Option | Type | Default | Description |
 |--------|------|---------|-------------|
 | `entity` | string | **required** | Sensor entity that provides the image URL |
 | `fade_ms` | number | `1000` | Cross-fade transition duration in milliseconds |
+| `now_playing_entity` | string | `null` | Optional `media_player`/sensor entity for the badge (`"auto"` targets `sensor.<pulse_host>_now_playing`) |
+| `now_playing_label` | string | `"Now Playing"` | Overrides the label shown above the track text |
 | `secondary_urls` | array | `[]` | Array of navigation paths to cycle through on tap |
 
 ## Related Projects

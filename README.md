@@ -10,6 +10,7 @@ A beautiful, full-screen photo frame card for Home Assistant with smooth crossfa
 
 - **Smooth crossfades** - Double-buffered image transitions with no white flash
 - **Clock overlay** - Displays current time and date with automatic locale/timezone support
+- **Now Playing badge** - Optional artist/title ribbon powered by any HA entity
 - **Media source support** - Works with Home Assistant's media browser and signed URLs
 - **Navigation cycling** - Optional tap-to-cycle through multiple dashboards (perfect for kiosks)
 - **Responsive design** - Adapts to any screen size with responsive typography
@@ -86,10 +87,15 @@ views:
       - type: custom:pulse-photo-card
         entity: sensor.pulse_current_photo_url
         fade_ms: 1200          # optional, default 1000
+        now_playing_entity: auto   # optional; follows sensor.<pulse_host>_now_playing
         secondary_urls:        # optional, array of URLs to cycle through on tap
           - /dashboard-pulse/0
           - /dashboard-weather
 ```
+
+Point `now_playing_entity` at any Home Assistant entity that exposes `media_title` / `media_artist` attributes (for example, Music Assistant or Snapcast `media_player` entities). You can also supply a sensor that already formats the text (the badge will show the sensor state whenever it isn't `unknown`/`unavailable`). Leave the option out entirely if you don't want a Now Playing pill.
+
+Running a shared dashboard across multiple kiosks? Set `now_playing_entity: auto` and make sure each Pulse device appends `?pulse_host=<hostname>` (PulseOS now does this automatically). The card will look up `sensor.<pulse_host>_now_playing`, so every kiosk shows its own track without duplicating Lovelace YAML.
 
 ## Configuration Options
 
@@ -97,6 +103,8 @@ views:
 |--------|------|---------|-------------|
 | `entity` | string | **required** | Sensor entity that provides the image URL |
 | `fade_ms` | number | `1000` | Cross-fade transition duration in milliseconds |
+| `now_playing_entity` | string | `null` | Optional `media_player`/sensor entity for the badge. Set to `"auto"` to follow `sensor.<pulse_host>_now_playing`. |
+| `now_playing_label` | string | `"Now Playing"` | Overrides the label shown above the track text |
 | `secondary_urls` | array | `[]` | Array of navigation paths to cycle through on tap |
 
 ### Navigation Cycling
