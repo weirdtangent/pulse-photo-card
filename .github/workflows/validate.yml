@@ -23,7 +23,7 @@ jobs:
     name: Semantic Release
     runs-on: ubuntu-latest
     needs:
-      - lint
+      - validate
 
     outputs:
       published: ${{ steps.semrel.outputs.new_release_published }}
