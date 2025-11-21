@@ -59,7 +59,7 @@ secondary_urls:
 ```yaml
 type: custom:pulse-photo-card
 entity: sensor.pulse_current_photo_url
-now_playing_entity: media_player.pulse_bedroom
+now_playing_entity: auto
 ```
 
 Set `now_playing_entity: auto` and include `?pulse_host=<hostname>` in the kiosk URL (PulseOS handles this automatically) to have the card follow `sensor.<hostname>_now_playing` per device.

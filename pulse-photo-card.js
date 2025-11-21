@@ -114,8 +114,11 @@ class PulsePhotoCard extends HTMLElement {
 
         .overlay__content {
           display: flex;
-          flex-direction: column;
-          gap: clamp(18px, 3vw, 28px);
+          flex-direction: row;
+          align-items: flex-end;
+          justify-content: space-between;
+          gap: clamp(18px, 4vw, 32px);
+          flex-wrap: wrap;
           width: 100%;
         }
 
@@ -124,6 +127,7 @@ class PulsePhotoCard extends HTMLElement {
           color: #fff;
           font-family: "Noto Sans", Verdana, "DejaVu Sans", sans-serif;
           line-height: 1.1;
+          flex: 0 1 auto;
         }
 
         .clock__time {
@@ -140,14 +144,12 @@ class PulsePhotoCard extends HTMLElement {
 
         .now-playing {
           pointer-events: none;
-          background: rgba(16, 24, 32, 0.82);
-          border-radius: 22px;
-          padding: clamp(12px, 2vw, 18px) clamp(16px, 3vw, 28px);
-          max-width: min(640px, 90vw);
-          box-shadow: 0 15px 45px rgba(0, 0, 0, 0.45);
           opacity: 0;
           transform: translateY(16px);
           transition: opacity 180ms ease, transform 180ms ease;
+          text-align: right;
+          flex: 1 1 50%;
+          max-width: min(540px, 70vw);
         }
 
         .now-playing.visible {
@@ -162,6 +164,7 @@ class PulsePhotoCard extends HTMLElement {
           text-transform: uppercase;
           color: rgba(255, 255, 255, 0.7);
           margin-bottom: 0.35em;
+          text-align: right;
         }
 
         .now-playing__text {
@@ -169,6 +172,7 @@ class PulsePhotoCard extends HTMLElement {
           font-weight: 400;
           color: #fff;
           line-height: 1.3;
+          text-align: right;
         }
       </style>
 
