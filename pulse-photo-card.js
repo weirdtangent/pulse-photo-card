@@ -79,7 +79,7 @@ class PulsePhotoCard extends HTMLElement {
     const remoteOverlayMarkup = this._overlayEnabled
       ? `
             <div class="overlay overlay--remote hidden">
-              <iframe class="overlay__frame" title="Pulse overlay" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
+              <iframe class="overlay__frame" title="Pulse overlay" sandbox="allow-scripts allow-forms allow-same-origin" allowtransparency="true"></iframe>
             </div>
           `
       : '';
