@@ -4,7 +4,7 @@
   <img src="https://raw.githubusercontent.com/weirdtangent/pulse-photo-card/main/assets/logo.png" alt="Pulse OS social preview" width="640" />
 </p>
 
-A beautiful, full-screen photo frame card for Home Assistant with smooth crossfades, clock overlay, and optional navigation cycling for kiosk displays.
+A beautiful, full-screen photo frame card for Home Assistant with smooth crossfades, clock overlay, optional navigation cycling, and first-class integration with the new PulseOS overlay endpoint.
 
 ## Features
 
@@ -13,6 +13,7 @@ A beautiful, full-screen photo frame card for Home Assistant with smooth crossfa
 - **Now Playing badge** - Optional artist/title ribbon powered by any HA entity
 - **Media source support** - Works with Home Assistant's media browser and signed URLs
 - **Navigation cycling** - Optional tap-to-cycle through multiple dashboards (perfect for kiosks)
+- **PulseOS overlay embed** - Automatically mirrors the kiosk-hosted overlay (multiple clocks, timers, alarms, notification bar, buttons) and falls back to the built-in clock if unreachable
 - **Responsive design** - Adapts to any screen size with responsive typography
 
 ## Preview
@@ -106,6 +107,31 @@ Running a shared dashboard across multiple kiosks? Set `now_playing_entity: auto
 | `now_playing_entity` | string | `null` | Optional `media_player`/sensor entity for the badge. Set to `"auto"` to follow `sensor.<pulse_host>_now_playing`. |
 | `now_playing_label` | string | `"Now Playing"` | Overrides the label shown above the track text |
 | `secondary_urls` | array | `[]` | Array of navigation paths to cycle through on tap |
+| `overlay_enabled` | bool | auto | Set to `false` to force the legacy overlay even if a kiosk overlay is available. Defaults to `true` when `overlay_url` resolves. |
+| `overlay_url` | string | `http://<pulse_host>:8800/overlay` | URL of the PulseOS overlay endpoint. Leave unset to auto-detect via `?pulse_host` query param. |
+| `overlay_refresh_entity` | string | `null` | Optional HA entity (e.g., MQTT sensor) whose state changes when the kiosk publishes overlay refresh hints. When it changes, the card re-fetches the overlay HTML immediately. |
+| `overlay_poll_seconds` | number | `120` | Fallback refresh cadence (seconds) if no refresh entity is configured or events are missed. Set to `0` to disable polling entirely. |
+
+### Overlay endpoint integration
+
+PulseOS 0.12+ exposes a ready-to-render overlay at `http://<pulse-host>:8800/overlay` plus an MQTT hint topic `pulse/<host>/overlay/refresh`. The card can now embed that HTML in an `<iframe>` so timers, alarms, multi-clock layouts, notification badges, and Stop/Snooze buttons stay in perfect sync with the kiosk without reimplementing them in JavaScript.
+
+Recommended setup:
+
+1. Ensure your kiosk URL already includes `?pulse_host=<hostname>` (PulseOS does this automatically). The card will map that hostname to `http://<host>:8800/overlay`.
+2. Create an MQTT sensor (or any HA entity) that mirrors `pulse/<host>/overlay/refresh` and include it as `overlay_refresh_entity`. Each time the JSON payload changes, the card re-fetches the overlay HTML. Example:
+
+   ```yaml
+   mqtt:
+     sensor:
+       - name: "Pulse Living Overlay Refresh"
+         state_topic: "pulse/living-room/overlay/refresh"
+         value_template: "{{ value_json.version }}"
+   ```
+
+3. Optionally tighten `overlay_poll_seconds` (default 120) if you want a quicker safety refresh.
+
+If the overlay endpoint can't be reached, the card automatically falls back to its legacy lower-left clock + Now Playing badge so users still see the time.
 
 ### Navigation Cycling
 

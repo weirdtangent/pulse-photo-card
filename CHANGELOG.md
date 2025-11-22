@@ -1,6 +1,9 @@
-# [0.14.0](https://github.com/weirdtangent/pulse-photo-card/compare/v0.13.1...v0.14.0) (2025-11-21)
-
+# [0.15.0](https://github.com/weirdtangent/pulse-photo-card/compare/v0.14.0...v0.15.0) (2025-11-22)
 
 ### Features
 
-* add optional 'Now Playing' overlay ([11bd3ac](https://github.com/weirdtangent/pulse-photo-card/commit/11bd3ace1761d06228b1a2ed4fbbc335a01b8619))
+* embed the PulseOS `/overlay` endpoint inside the card, auto-refreshing via MQTT hints and falling back to the legacy clock ([TBD](https://github.com/weirdtangent/pulse-photo-card/compare/v0.14.0...v0.15.0))
+
+### Docs
+
+* document overlay config knobs and setup flow in README/info

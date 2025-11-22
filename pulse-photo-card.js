@@ -14,6 +14,18 @@ class PulsePhotoCard extends HTMLElement {
     this._nowPlayingTextEl = null;
     this._nowPlayingLastText = '';
     this._resolvedNowPlayingEntity = null;
+    this._legacyOverlayEl = null;
+    this._remoteOverlayEl = null;
+    this._remoteOverlayFrame = null;
+    this._overlayStatusEl = null;
+    this._overlayUrl = null;
+    this._overlayEnabled = false;
+    this._overlayRefreshEntity = null;
+    this._overlayPollMs = 120000;
+    this._overlayPollTimer = null;
+    this._overlayLastTrigger = null;
+    this._overlayActive = false;
+    this._overlayLastFetch = 0;
   }
 
   setConfig(config) {
@@ -26,6 +38,10 @@ class PulsePhotoCard extends HTMLElement {
       secondary_urls: [],
       now_playing_entity: null,
       now_playing_label: 'Now Playing',
+      overlay_enabled: undefined,
+      overlay_url: undefined,
+      overlay_refresh_entity: undefined,
+      overlay_poll_seconds: 120,
       ...config,
     };
 
@@ -45,6 +61,7 @@ class PulsePhotoCard extends HTMLElement {
 
     this._resolvedNowPlayingEntity = this._resolveNowPlayingEntity();
     const showNowPlaying = Boolean(this._resolvedNowPlayingEntity);
+    this._configureOverlayEndpoint();
 
     if (!this.shadowRoot) {
       this.attachShadow({ mode: 'open' });
@@ -57,6 +74,14 @@ class PulsePhotoCard extends HTMLElement {
                 <div class="now-playing__text"></div>
               </div>
             `
+      : '';
+
+    const remoteOverlayMarkup = this._overlayEnabled
+      ? `
+            <div class="overlay overlay--remote hidden">
+              <iframe class="overlay__frame" title="Pulse overlay" sandbox="allow-scripts allow-forms allow-same-origin"></iframe>
+            </div>
+          `
       : '';
 
     this.shadowRoot.innerHTML = `
@@ -99,6 +124,34 @@ class PulsePhotoCard extends HTMLElement {
         .overlay {
           position: absolute;
           inset: 0;
+        }
+
+        .overlay-status {
+          position: absolute;
+          top: 18px;
+          left: 18px;
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          font-size: 0.95rem;
+          font-weight: 500;
+          padding: 0.35rem 0.65rem;
+          border-radius: 999px;
+          background: rgba(0, 0, 0, 0.45);
+          color: #fff;
+          pointer-events: none;
+          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+        }
+
+        .overlay-status.hidden {
+          display: none;
+        }
+
+        .overlay-status__emoji {
+          font-size: 1.1rem;
+        }
+
+        .overlay--legacy {
           display: flex;
           align-items: flex-end;
           justify-content: flex-start;
@@ -110,6 +163,32 @@ class PulsePhotoCard extends HTMLElement {
             rgba(0, 0, 0, 0.35) 65%,
             rgba(0, 0, 0, 0.75) 100%
           );
+          opacity: 1;
+          transition: opacity 180ms ease;
+        }
+
+        .overlay--legacy.hidden {
+          opacity: 0;
+        }
+
+        .overlay--remote {
+          pointer-events: auto;
+        }
+
+        .overlay--remote.hidden {
+          opacity: 0;
+          pointer-events: none;
+        }
+
+        .overlay__frame {
+          width: 100%;
+          height: 100%;
+          border: none;
+          background: transparent;
+        }
+
+        .overlay__frame::-webkit-scrollbar {
+          display: none;
         }
 
         .overlay__content {
@@ -181,7 +260,12 @@ class PulsePhotoCard extends HTMLElement {
           <img class="layer layer-a visible" />
           <img class="layer layer-b" />
         </div>
-        <div class="overlay">
+        <div class="overlay-status">
+          <span class="overlay-status__emoji" aria-hidden="true">🕒</span>
+          <span class="overlay-status__text">Legacy overlay</span>
+        </div>
+        ${remoteOverlayMarkup}
+        <div class="overlay overlay--legacy">
           <div class="overlay__content">
             <div class="clock">
               <div class="clock__time">--:--</div>
@@ -199,6 +283,10 @@ class PulsePhotoCard extends HTMLElement {
       a: this.shadowRoot.querySelector('.layer-a'),
       b: this.shadowRoot.querySelector('.layer-b'),
     };
+    this._legacyOverlayEl = this.shadowRoot.querySelector('.overlay--legacy');
+    this._remoteOverlayEl = this.shadowRoot.querySelector('.overlay--remote');
+    this._remoteOverlayFrame = this.shadowRoot.querySelector('.overlay__frame');
+    this._overlayStatusEl = this.shadowRoot.querySelector('.overlay-status');
     this._timeEl = this.shadowRoot.querySelector('.clock__time');
     this._dateEl = this.shadowRoot.querySelector('.clock__date');
     this._nowPlayingEl = this.shadowRoot.querySelector('.now-playing');
@@ -207,26 +295,29 @@ class PulsePhotoCard extends HTMLElement {
     if (this._nowPlayingLabelEl) {
       this._nowPlayingLabelEl.textContent = this._config.now_playing_label || 'Now Playing';
     }
-    
+
     // Store the home path (current path when card is initialized)
     this._homePath = window.location.pathname;
-    
+
     // Set up tap handler if secondary URLs are configured
     if (this._config.secondary_urls.length > 0) {
       // Set up local tap handler for the card itself
       this._card.addEventListener('click', (e) => this._handleTap(e));
-      
+
       // Also set up global tap handler that works on any dashboard
       if (window.PulsePhotoCardGlobalTap && window.PulsePhotoCardGlobalTap.setup) {
         window.PulsePhotoCardGlobalTap.setup(this._homePath, this._config.secondary_urls);
       }
-      
+
       // Initialize the current index based on the current URL
       this._initializeUrlIndex();
     }
-    
+
     this._startClock();
     this._updateNowPlaying();
+    this._ensureOverlayPolling();
+    this._updateOverlayStatus();
+    this._handleOverlayRefreshTrigger('config');
   }
 
   set hass(hass) {
@@ -254,6 +345,7 @@ class PulsePhotoCard extends HTMLElement {
     }
 
     this._updateNowPlaying();
+    this._handleOverlayRefreshTrigger('hass');
   }
 
   async _loadNewImage(rawPath) {
@@ -422,6 +514,11 @@ class PulsePhotoCard extends HTMLElement {
       clearInterval(this._clockInterval);
       this._clockInterval = null;
     }
+    if (this._overlayPollTimer) {
+      clearInterval(this._overlayPollTimer);
+      this._overlayPollTimer = null;
+    }
+    this._updateOverlayStatus();
   }
 
   _startClock() {
@@ -476,6 +573,144 @@ class PulsePhotoCard extends HTMLElement {
     return raw;
   }
 
+  _configureOverlayEndpoint() {
+    const explicitUrl =
+      typeof this._config.overlay_url === 'string' && this._config.overlay_url.trim().length > 0
+        ? this._config.overlay_url.trim()
+        : null;
+    const host = this._extractPulseHostFromQuery();
+    const inferredUrl = host ? `http://${host}:8800/overlay` : null;
+    this._overlayUrl = explicitUrl || inferredUrl;
+    const enabled =
+      typeof this._config.overlay_enabled === 'boolean'
+        ? this._config.overlay_enabled
+        : Boolean(this._overlayUrl);
+    this._overlayEnabled = enabled && Boolean(this._overlayUrl);
+    this._overlayRefreshEntity =
+      typeof this._config.overlay_refresh_entity === 'string'
+        ? this._config.overlay_refresh_entity.trim()
+        : null;
+    const pollSeconds = Number(this._config.overlay_poll_seconds);
+    this._overlayPollMs = Number.isFinite(pollSeconds) && pollSeconds > 0 ? pollSeconds * 1000 : 120000;
+    if (!this._overlayEnabled) {
+      this._overlayUrl = null;
+    }
+    this._updateOverlayStatus();
+  }
+
+  _ensureOverlayPolling() {
+    if (!this._overlayEnabled) {
+      if (this._overlayPollTimer) {
+        clearInterval(this._overlayPollTimer);
+        this._overlayPollTimer = null;
+      }
+      return;
+    }
+    if (this._overlayPollTimer) {
+      clearInterval(this._overlayPollTimer);
+    }
+    if (this._overlayPollMs <= 0) {
+      this._overlayPollTimer = null;
+      return;
+    }
+    this._overlayPollTimer = window.setInterval(() => this._handleOverlayRefreshTrigger('interval'), this._overlayPollMs);
+  }
+
+  _handleOverlayRefreshTrigger(source) {
+    if (!this._overlayEnabled || !this._overlayUrl || !this.isConnected) {
+      return;
+    }
+    let triggerKey = null;
+    if (this._overlayRefreshEntity) {
+      const entity = this._hass?.states?.[this._overlayRefreshEntity];
+      if (entity) {
+        triggerKey = `${entity.state ?? ''}|${entity.attributes?.version ?? ''}|${entity.last_changed ?? ''}`;
+      }
+    }
+    const now = Date.now();
+    if (triggerKey && triggerKey !== this._overlayLastTrigger) {
+      this._overlayLastTrigger = triggerKey;
+      this._fetchOverlayRemote({ reason: 'entity', cacheKey: triggerKey });
+      return;
+    }
+    if (!this._overlayActive || now - this._overlayLastFetch >= this._overlayPollMs) {
+      this._fetchOverlayRemote({ reason: source || 'poll' });
+    }
+  }
+
+  async _fetchOverlayRemote({ reason, cacheKey } = {}) {
+    if (!this._overlayUrl || !this._remoteOverlayFrame) {
+      return;
+    }
+    const url = this._appendCacheBuster(this._overlayUrl, cacheKey || `${reason || 'poll'}-${Date.now()}`);
+    try {
+      const response = await fetch(url, { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const html = await response.text();
+      this._remoteOverlayFrame.srcdoc = html;
+      this._overlayActive = true;
+      this._overlayLastFetch = Date.now();
+      this._showRemoteOverlay(true);
+      this._updateOverlayStatus();
+    } catch (err) {
+      console.warn('pulse-photo-card: overlay fetch failed', err);
+      this._overlayActive = false;
+      this._showRemoteOverlay(false);
+      this._updateOverlayStatus();
+    }
+  }
+
+  _showRemoteOverlay(showRemote) {
+    if (!this._legacyOverlayEl) {
+      return;
+    }
+    if (this._remoteOverlayEl) {
+      if (showRemote) {
+        this._remoteOverlayEl.classList.remove('hidden');
+      } else {
+        this._remoteOverlayEl.classList.add('hidden');
+      }
+    }
+    if (showRemote) {
+      this._legacyOverlayEl.classList.add('hidden');
+    } else {
+      this._legacyOverlayEl.classList.remove('hidden');
+    }
+  }
+
+  _appendCacheBuster(url, token) {
+    if (!token) {
+      return url;
+    }
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}_cb=${encodeURIComponent(token)}`;
+  }
+
+  _updateOverlayStatus() {
+    if (!this._overlayStatusEl) {
+      return;
+    }
+    const emojiEl = this._overlayStatusEl.querySelector('.overlay-status__emoji');
+    const textEl = this._overlayStatusEl.querySelector('.overlay-status__text');
+    if (!emojiEl || !textEl) {
+      return;
+    }
+    if (this._overlayEnabled && this._overlayActive) {
+      this._overlayStatusEl.classList.add('hidden');
+      return;
+    }
+    this._overlayStatusEl.classList.remove('hidden');
+    if (this._overlayEnabled) {
+      emojiEl.textContent = '🚫';
+      textEl.textContent = 'Pulse overlay unavailable';
+    } else {
+      emojiEl.textContent = '🕒';
+      textEl.textContent = 'Legacy overlay';
+    }
+  }
+
   _extractPulseHostFromQuery() {
     try {
       const params = new URLSearchParams(window.location.search);
@@ -492,15 +727,15 @@ class PulsePhotoCard extends HTMLElement {
 
   _findUrlIndex(path, secondaryUrls, homePath) {
     const normalizedPath = this._normalizePath(path);
-    
+
     if (normalizedPath === this._normalizePath(homePath)) {
       return 0; // Home
     }
-    
+
     const matchingIndex = secondaryUrls.findIndex(url => {
       return this._normalizePath(url) === normalizedPath;
     });
-    
+
     return matchingIndex >= 0 ? matchingIndex + 1 : null;
   }
 
@@ -508,7 +743,7 @@ class PulsePhotoCard extends HTMLElement {
     const currentPath = window.location.pathname;
     const storageKey = `pulse-photo-card-url-index-${this._homePath}`;
     const index = this._findUrlIndex(currentPath, this._config.secondary_urls, this._homePath);
-    
+
     if (index !== null) {
       localStorage.setItem(storageKey, index.toString());
     }
@@ -527,13 +762,13 @@ class PulsePhotoCard extends HTMLElement {
 
     // Use home path as storage key to maintain state across navigation
     const storageKey = `pulse-photo-card-url-index-${this._homePath}`;
-    
+
     // Get current index from localStorage, default to 0 (home screen)
     let currentIndex = parseInt(localStorage.getItem(storageKey) || '0', 10);
-    
+
     // Increment index and wrap around (0 = home, 1+ = secondary URLs)
     currentIndex = (currentIndex + 1) % (this._config.secondary_urls.length + 1);
-    
+
     // Navigate based on index
     if (currentIndex === 0) {
       // Navigate back to home
@@ -543,7 +778,7 @@ class PulsePhotoCard extends HTMLElement {
       const targetUrl = this._config.secondary_urls[currentIndex - 1];
       this._navigateToPath(targetUrl);
     }
-    
+
     // Store the new index
     localStorage.setItem(storageKey, currentIndex.toString());
   }
@@ -556,7 +791,7 @@ class PulsePhotoCard extends HTMLElement {
     const normalizedPath = this._normalizePath(path);
     const currentParams = new URLSearchParams(window.location.search);
     const kioskParams = new URLSearchParams();
-    
+
     // Preserve parameters that control kiosk mode
     if (currentParams.has('sidebar')) {
       kioskParams.set('sidebar', currentParams.get('sidebar'));
@@ -564,7 +799,7 @@ class PulsePhotoCard extends HTMLElement {
     if (currentParams.has('disable_km')) {
       kioskParams.set('disable_km', currentParams.get('disable_km'));
     }
-    
+
     const newSearch = kioskParams.toString();
     return normalizedPath + (newSearch ? '?' + newSearch : '');
   }
@@ -581,9 +816,9 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
 // This allows taps to work on any dashboard, not just the photo frame
 (function() {
   'use strict';
-  
+
   let globalTapHandler = null;
-  
+
   // Detect if we're running on a Pulse device (kiosk mode)
   // Only enable global tap handler on Pulse, not on desktop browsers
   function isPulseDevice() {
@@ -592,58 +827,58 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
     if (urlParams.has('pulse_tap_disable')) {
       return false;
     }
-    
+
     // Check if we're in fullscreen/kiosk mode
     // Pulse runs Chromium with --kiosk flag, which puts it in fullscreen
-    const isFullscreen = window.innerHeight === screen.height && 
+    const isFullscreen = window.innerHeight === screen.height &&
                          window.innerWidth === screen.width &&
                          !window.navigator.standalone; // Exclude iOS standalone mode
-    
+
     // Additional check: if window.chrome exists and we're in a very specific fullscreen state
     // This is a heuristic - Pulse devices run in kiosk mode
-    const isLikelyKiosk = isFullscreen && 
+    const isLikelyKiosk = isFullscreen &&
                           document.fullscreenElement === null && // Not programmatic fullscreen
                           window.screen.availHeight === window.innerHeight; // Using full screen
-    
+
     return isLikelyKiosk;
   }
-  
+
   // Shared utility functions
   function normalizePath(path) {
     return path.startsWith('/') ? path : `/${path}`;
   }
-  
+
   function preserveKioskParams(path) {
     const normalizedPath = normalizePath(path);
     const currentParams = new URLSearchParams(window.location.search);
     const kioskParams = new URLSearchParams();
-    
+
     if (currentParams.has('sidebar')) {
       kioskParams.set('sidebar', currentParams.get('sidebar'));
     }
     if (currentParams.has('disable_km')) {
       kioskParams.set('disable_km', currentParams.get('disable_km'));
     }
-    
+
     const newSearch = kioskParams.toString();
     return normalizedPath + (newSearch ? '?' + newSearch : '');
   }
-  
+
   function findUrlIndex(path, secondaryUrls, homePath) {
     const normalizedPath = normalizePath(path);
     const normalizedHome = normalizePath(homePath);
-    
+
     if (normalizedPath === normalizedHome) {
       return 0; // Home
     }
-    
+
     const matchingIndex = secondaryUrls.findIndex(url => {
       return normalizePath(url) === normalizedPath;
     });
-    
+
     return matchingIndex >= 0 ? matchingIndex + 1 : null;
   }
-  
+
   function setupGlobalTapHandler(homePath, secondaryUrls) {
     // Only enable on Pulse devices, not on desktop browsers
     if (!isPulseDevice()) {
@@ -656,30 +891,30 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
       localStorage.removeItem(configKey);
       return;
     }
-    
+
     // Remove existing handler if any
     if (globalTapHandler) {
       document.removeEventListener('click', globalTapHandler, true);
       globalTapHandler = null;
     }
-    
+
     if (!secondaryUrls || secondaryUrls.length === 0) {
       // Clear stored config if URLs are removed
       const configKey = `pulse-photo-card-config-${homePath}`;
       localStorage.removeItem(configKey);
       return;
     }
-    
+
     // Store config in localStorage so it persists across page navigations
     const configKey = `pulse-photo-card-config-${homePath}`;
     localStorage.setItem(configKey, JSON.stringify({ homePath, secondaryUrls }));
-    
+
     globalTapHandler = function(e) {
       // Double-check we're on Pulse device (in case detection changes)
       if (!isPulseDevice()) {
         return;
       }
-      
+
       // Load config from localStorage
       const keys = Object.keys(localStorage);
       let config = null;
@@ -699,24 +934,24 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
           }
         }
       }
-      
+
       if (!config || !config.secondaryUrls || config.secondaryUrls.length === 0) {
         return;
       }
-      
+
       const { homePath: configHomePath, secondaryUrls } = config;
-      
+
       // Skip tap handling if disable_km parameter is present (used for editing)
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.has('disable_km')) {
         return;
       }
-      
+
       // Only handle taps on the main content area, not on interactive elements
       const target = e.target;
-      if (target.tagName === 'A' || 
-          target.tagName === 'BUTTON' || 
-          target.tagName === 'INPUT' || 
+      if (target.tagName === 'A' ||
+          target.tagName === 'BUTTON' ||
+          target.tagName === 'INPUT' ||
           target.tagName === 'SELECT' ||
           target.tagName === 'TEXTAREA' ||
           target.closest('ha-button') ||
@@ -728,19 +963,19 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
           target.closest('ha-card[tabindex]')) {
         return;
       }
-      
+
       // Skip if clicking on cards that have their own tap actions
       if (target.closest('hui-card') && target.closest('hui-card').config?.tap_action) {
         return;
       }
-      
+
       const storageKey = `pulse-photo-card-url-index-${configHomePath}`;
       const currentPath = window.location.pathname;
-      
+
       // Determine current index - check stored value first, then verify against actual path
       let currentIndex = parseInt(localStorage.getItem(storageKey) || '0', 10);
       const actualIndex = findUrlIndex(currentPath, secondaryUrls, configHomePath);
-      
+
       // If stored index doesn't match actual path, use actual index
       if (actualIndex !== null) {
         if (currentIndex !== actualIndex) {
@@ -751,29 +986,29 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
         // This might be a stale state, so don't handle
         return;
       }
-      
+
       // Increment index and wrap around (0 = home, 1+ = secondary URLs)
       currentIndex = (currentIndex + 1) % (secondaryUrls.length + 1);
-      
+
       // Determine target path
       const targetPath = currentIndex === 0 ? configHomePath : secondaryUrls[currentIndex - 1];
-      
+
       // Prevent default behavior and stop propagation
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
-      
+
       // Store the new index
       localStorage.setItem(storageKey, currentIndex.toString());
-      
+
       // Navigate with preserved kiosk parameters
       window.location.href = preserveKioskParams(targetPath);
     };
-    
+
     // Use capture phase to catch clicks early, but allow other handlers to work
     document.addEventListener('click', globalTapHandler, true);
   }
-  
+
   // Initialize on page load if we're in cycling mode
   function initializeOnLoad() {
     // Only initialize on Pulse devices
@@ -781,14 +1016,14 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
       // Clean up any leftover config from desktop testing
       const keys = Object.keys(localStorage);
       for (const key of keys) {
-        if (key.startsWith('pulse-photo-card-config-') || 
+        if (key.startsWith('pulse-photo-card-config-') ||
             key.startsWith('pulse-photo-card-url-index-')) {
           localStorage.removeItem(key);
         }
       }
       return;
     }
-    
+
     // Check if we have any stored config indicating we're in cycling mode
     // Look for localStorage keys that match the pattern
     const keys = Object.keys(localStorage);
@@ -797,10 +1032,10 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
         try {
           const configStr = localStorage.getItem(key);
           if (!configStr) continue;
-          
+
           const config = JSON.parse(configStr);
           const { homePath, secondaryUrls } = config;
-          
+
           if (secondaryUrls && secondaryUrls.length > 0) {
             // Set up the global handler with stored config
             setupGlobalTapHandler(homePath, secondaryUrls);
@@ -813,14 +1048,14 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
       }
     }
   }
-  
+
   // Run initialization when DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeOnLoad);
   } else {
     initializeOnLoad();
   }
-  
+
   // Expose setup function for pulse-photo-card to use
   window.PulsePhotoCardGlobalTap = {
     setup: setupGlobalTapHandler,
