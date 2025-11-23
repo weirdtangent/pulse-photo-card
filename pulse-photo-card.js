@@ -579,7 +579,7 @@ class PulsePhotoCard extends HTMLElement {
         ? this._config.overlay_url.trim()
         : null;
     const host = this._extractPulseHostFromQuery();
-    const inferredUrl = host ? `http://${host}:8800/overlay` : null;
+    const inferredUrl = host ? `http://${host}.local:8800/overlay` : null;
     this._overlayUrl = explicitUrl || inferredUrl;
     const enabled =
       typeof this._config.overlay_enabled === 'boolean'
