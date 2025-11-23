@@ -573,23 +573,43 @@ class PulsePhotoCard extends HTMLElement {
     return raw;
   }
 
+  _resolveOverlayRefreshEntity() {
+    const raw = this._config?.overlay_refresh_entity;
+    if (raw === undefined || raw === null) {
+      return this._autoOverlayRefreshEntity();
+    }
+    if (typeof raw === 'string') {
+      const trimmed = raw.trim();
+      if (!trimmed || trimmed.toLowerCase() === 'auto') {
+        return this._autoOverlayRefreshEntity();
+      }
+      return trimmed;
+    }
+    return null;
+  }
+
+  _autoOverlayRefreshEntity() {
+    const pulseHost = this._extractPulseHostFromQuery();
+    if (!pulseHost) {
+      return null;
+    }
+    return `sensor.${this._sanitizeHostname(pulseHost)}_overlay_refresh`;
+  }
+
   _configureOverlayEndpoint() {
     const explicitUrl =
       typeof this._config.overlay_url === 'string' && this._config.overlay_url.trim().length > 0
         ? this._config.overlay_url.trim()
         : null;
     const host = this._extractPulseHostFromQuery();
-    const inferredUrl = host ? `http://${host}.local:8800/overlay` : null;
+    const inferredUrl = host ? `http://${host}:8800/overlay` : null;
     this._overlayUrl = explicitUrl || inferredUrl;
     const enabled =
       typeof this._config.overlay_enabled === 'boolean'
         ? this._config.overlay_enabled
         : Boolean(this._overlayUrl);
     this._overlayEnabled = enabled && Boolean(this._overlayUrl);
-    this._overlayRefreshEntity =
-      typeof this._config.overlay_refresh_entity === 'string'
-        ? this._config.overlay_refresh_entity.trim()
-        : null;
+    this._overlayRefreshEntity = this._resolveOverlayRefreshEntity();
     const pollSeconds = Number(this._config.overlay_poll_seconds);
     this._overlayPollMs = Number.isFinite(pollSeconds) && pollSeconds > 0 ? pollSeconds * 1000 : 120000;
     if (!this._overlayEnabled) {
@@ -706,7 +726,7 @@ class PulsePhotoCard extends HTMLElement {
       emojiEl.textContent = '🚫';
       textEl.textContent = 'Pulse overlay unavailable';
     } else {
-      emojiEl.textContent = '&#128116;';
+      emojiEl.textContent = '🕒';
       textEl.textContent = 'Legacy overlay';
     }
   }

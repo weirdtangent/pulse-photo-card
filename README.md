@@ -123,7 +123,7 @@ Running a shared dashboard across multiple kiosks? Set `now_playing_entity: auto
 | `secondary_urls` | array | `[]` | Array of navigation paths to cycle through on tap |
 | `overlay_enabled` | bool | auto | Set to `false` to force the legacy overlay even if a kiosk overlay is available. Defaults to `true` when `overlay_url` resolves. |
 | `overlay_url` | string | `http://<pulse_host>:8800/overlay` | URL of the PulseOS overlay endpoint. Leave unset to auto-detect via `?pulse_host` query param. |
-| `overlay_refresh_entity` | string | `null` | Optional HA entity (e.g., MQTT sensor) whose state changes when the kiosk publishes overlay refresh hints. When it changes, the card re-fetches the overlay HTML immediately. |
+| `overlay_refresh_entity` | string | `auto` | Optional HA entity (e.g., MQTT sensor) whose state changes when the kiosk publishes overlay refresh hints. Leave unset/`"auto"` to follow `sensor.<pulse_host>_overlay_refresh`; set a custom entity if you use a different naming pattern. |
 | `overlay_poll_seconds` | number | `120` | Fallback refresh cadence (seconds) if no refresh entity is configured or events are missed. Set to `0` to disable polling entirely. |
 
 ### Overlay endpoint integration
@@ -133,7 +133,7 @@ PulseOS 0.12+ exposes a ready-to-render overlay at `http://<pulse-host>:8800/ove
 Recommended setup:
 
 1. Ensure your kiosk URL already includes `?pulse_host=<hostname>` (PulseOS does this automatically). The card will map that hostname to `http://<host>:8800/overlay`.
-2. Create an MQTT sensor (or any HA entity) that mirrors `pulse/<host>/overlay/refresh` and include it as `overlay_refresh_entity`. Each time the JSON payload changes, the card re-fetches the overlay HTML. Example:
+2. Create an MQTT sensor (or any HA entity) that mirrors `pulse/<host>/overlay/refresh` and name it `sensor.<pulse_host>_overlay_refresh` (for example, `sensor.pulse_living_room_overlay_refresh`). The card auto-detects that entity whenever `overlay_refresh_entity` is unset or `"auto"`. Each time the JSON payload changes, the card re-fetches the overlay HTML. Example:
 
    ```yaml
    mqtt:
