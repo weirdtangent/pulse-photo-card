@@ -706,7 +706,7 @@ class PulsePhotoCard extends HTMLElement {
       emojiEl.textContent = '🚫';
       textEl.textContent = 'Pulse overlay unavailable';
     } else {
-      emojiEl.textContent = '🕒';
+      emojiEl.textContent = '&#128116;';
       textEl.textContent = 'Legacy overlay';
     }
   }
