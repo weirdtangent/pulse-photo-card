@@ -1,3 +1,10 @@
+## [0.18.5](https://github.com/weirdtangent/pulse-photo-card/compare/v0.18.4...v0.18.5) (2025-11-23)
+
+
+### Bug Fixes
+
+* and now fix the z-index of the overlay itself ([456b045](https://github.com/weirdtangent/pulse-photo-card/commit/456b045027f7ad69e247bdf77252568168790887))
+
 ## [0.18.4](https://github.com/weirdtangent/pulse-photo-card/compare/v0.18.3...v0.18.4) (2025-11-23)
 
 
