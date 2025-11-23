@@ -168,7 +168,7 @@ class PulsePhotoCard extends HTMLElement {
         }
 
         .overlay--legacy.hidden {
-          opacity: 0;
+          display: none;
         }
 
         .overlay--remote {
@@ -176,7 +176,7 @@ class PulsePhotoCard extends HTMLElement {
         }
 
         .overlay--remote.hidden {
-          opacity: 0;
+          display: none;
           pointer-events: none;
         }
 
