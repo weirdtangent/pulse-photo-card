@@ -167,7 +167,7 @@ class PulsePhotoCard extends HTMLElement {
           );
           opacity: 1;
           transition: opacity 180ms ease;
-          z-index: 1;
+          z-index: 2;
         }
 
         .overlay--legacy.hidden {
@@ -176,7 +176,7 @@ class PulsePhotoCard extends HTMLElement {
 
         .overlay--remote {
           pointer-events: auto;
-          z-index: 1;
+          z-index: 2;
         }
 
         .overlay--remote.hidden {
