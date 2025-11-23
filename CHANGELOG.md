@@ -1,3 +1,10 @@
+# [0.16.0](https://github.com/weirdtangent/pulse-photo-card/compare/v0.15.3...v0.16.0) (2025-11-23)
+
+
+### Features
+
+* default overlay_refresh_entity to 'auto' ([85e5ec7](https://github.com/weirdtangent/pulse-photo-card/commit/85e5ec755c42e55a67b0eabc2256127d0927d8e5))
+
 ## [0.15.3](https://github.com/weirdtangent/pulse-photo-card/compare/v0.15.2...v0.15.3) (2025-11-23)
 
 
