@@ -1,3 +1,10 @@
+## [0.18.3](https://github.com/weirdtangent/pulse-photo-card/compare/v0.18.2...v0.18.3) (2025-11-23)
+
+
+### Bug Fixes
+
+* it wasn't OUR pop-up, it was from HA and/or MA ([554e7df](https://github.com/weirdtangent/pulse-photo-card/commit/554e7df0299b98488e9d0ebe789f1f408335b83e))
+
 ## [0.18.2](https://github.com/weirdtangent/pulse-photo-card/compare/v0.18.1...v0.18.2) (2025-11-23)
 
 
