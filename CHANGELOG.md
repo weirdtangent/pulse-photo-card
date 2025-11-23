@@ -1,3 +1,10 @@
+# [0.18.0](https://github.com/weirdtangent/pulse-photo-card/compare/v0.17.0...v0.18.0) (2025-11-23)
+
+
+### Features
+
+* added error logs for debugging help ([599d388](https://github.com/weirdtangent/pulse-photo-card/commit/599d3887edad51f50256e55a1ec8ba17ad4da14a))
+
 # [0.17.0](https://github.com/weirdtangent/pulse-photo-card/compare/v0.16.1...v0.17.0) (2025-11-23)
 
 
