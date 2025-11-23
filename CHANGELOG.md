@@ -1,3 +1,10 @@
+## [0.15.3](https://github.com/weirdtangent/pulse-photo-card/compare/v0.15.2...v0.15.3) (2025-11-23)
+
+
+### Bug Fixes
+
+* do HTML codes work, since emojis do not ([87a38d0](https://github.com/weirdtangent/pulse-photo-card/commit/87a38d045053b65baa11b7aef0f8c6f21d252001))
+
 ## [0.15.2](https://github.com/weirdtangent/pulse-photo-card/compare/v0.15.1...v0.15.2) (2025-11-23)
 
 
