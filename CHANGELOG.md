@@ -1,3 +1,10 @@
+# [0.17.0](https://github.com/weirdtangent/pulse-photo-card/compare/v0.16.1...v0.17.0) (2025-11-23)
+
+
+### Features
+
+* log error to HA if PulseOS overlay fails to load ([3529a6c](https://github.com/weirdtangent/pulse-photo-card/commit/3529a6cc4249b7b866c0e674d9afabfb762286c9))
+
 ## [0.16.1](https://github.com/weirdtangent/pulse-photo-card/compare/v0.16.0...v0.16.1) (2025-11-23)
 
 
