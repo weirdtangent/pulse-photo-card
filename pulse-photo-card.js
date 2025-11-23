@@ -170,21 +170,16 @@ class PulsePhotoCard extends HTMLElement {
         }
 
         .overlay--legacy.hidden {
-          display: none !important;
-          visibility: hidden !important;
-          opacity: 0 !important;
-          pointer-events: none !important;
+          display: none;
         }
 
         .overlay--remote {
           pointer-events: auto;
-          z-index: 2;
         }
 
         .overlay--remote.hidden {
           display: none;
           pointer-events: none;
-          visibility: hidden;
         }
 
         .overlay__frame {
@@ -192,12 +187,17 @@ class PulsePhotoCard extends HTMLElement {
           height: 100%;
           border: none;
           background: transparent;
-          pointer-events: auto;
         }
 
-        .overlay--legacy.hidden .now-playing {
+        /* Hide Home Assistant's built-in media player notification overlay */
+        ha-media-player-notification,
+        .media-player-notification,
+        [data-media-player-notification],
+        .ha-media-player-notification {
           display: none !important;
           visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
         }
 
         .overlay__frame::-webkit-scrollbar {
@@ -330,6 +330,27 @@ class PulsePhotoCard extends HTMLElement {
     this._updateNowPlaying();
     this._ensureOverlayPolling();
     this._updateOverlayStatus();
+
+    // Inject global CSS to hide Home Assistant's built-in media player notification overlay
+    // This appears before dashboards load and is separate from our card's Now Playing badge
+    if (!document.getElementById('pulse-photo-card-hide-ha-media-notification')) {
+      const style = document.createElement('style');
+      style.id = 'pulse-photo-card-hide-ha-media-notification';
+      style.textContent = `
+        ha-media-player-notification,
+        .media-player-notification,
+        [data-media-player-notification],
+        .ha-media-player-notification,
+        ha-notification-drawer ha-media-player-notification {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+        }
+      `;
+      document.head.appendChild(style);
+      this._logToHA('info', 'Injected global CSS to hide HA media player notification overlay');
+    }
 
     // Log initial state
     const host = this._extractPulseHostFromQuery() || 'none';
@@ -774,66 +795,34 @@ class PulsePhotoCard extends HTMLElement {
 
   _showRemoteOverlay(showRemote) {
     if (!this._legacyOverlayEl) {
-      this._logToHA('warning', '_showRemoteOverlay called but legacy overlay element missing');
       return;
     }
-    const host = this._extractPulseHostFromQuery() || 'unknown';
-    const legacyHadHidden = this._legacyOverlayEl.classList.contains('hidden');
-    const remoteHadHidden = this._remoteOverlayEl ? this._remoteOverlayEl.classList.contains('hidden') : true;
-    const nowPlayingVisible = this._nowPlayingEl ? this._nowPlayingEl.classList.contains('visible') : false;
-    this._logToHA('debug', `_showRemoteOverlay(${showRemote}): legacyHidden=${legacyHadHidden}, remoteHidden=${remoteHadHidden}, nowPlayingVisible=${nowPlayingVisible}`);
 
     if (this._remoteOverlayEl) {
       if (showRemote) {
         this._remoteOverlayEl.classList.remove('hidden');
-        if (!remoteHadHidden) {
-          this._logToHA('warning', `Remote overlay already visible for ${host} - forcing show`);
-        }
       } else {
         this._remoteOverlayEl.classList.add('hidden');
       }
-    } else if (showRemote) {
-      this._logToHA('warning', `Attempted to show remote overlay for ${host} but element missing`);
     }
 
     if (showRemote) {
       this._legacyOverlayEl.classList.add('hidden');
-      // Also explicitly hide the legacy Now Playing badge and set inline styles as backup
+      // Also hide legacy Now Playing badge
       if (this._nowPlayingEl) {
         this._nowPlayingEl.classList.remove('visible');
-        this._nowPlayingEl.style.display = 'none';
-        this._nowPlayingEl.style.visibility = 'hidden';
-      }
-      // Set inline styles as backup to ensure legacy overlay is hidden
-      this._legacyOverlayEl.style.display = 'none';
-      this._legacyOverlayEl.style.visibility = 'hidden';
-      if (legacyHadHidden) {
-        this._logToHA('warning', `Legacy overlay already hidden for ${host} - forcing hide`);
       }
     } else {
       this._legacyOverlayEl.classList.remove('hidden');
-      // Restore inline styles when showing legacy
-      this._legacyOverlayEl.style.display = '';
-      this._legacyOverlayEl.style.visibility = '';
-      if (this._nowPlayingEl) {
-        this._nowPlayingEl.style.display = '';
-        this._nowPlayingEl.style.visibility = '';
-      }
     }
 
     // Defensive check: ensure only one overlay is visible
     const legacyVisible = !this._legacyOverlayEl.classList.contains('hidden');
     const remoteVisible = this._remoteOverlayEl && !this._remoteOverlayEl.classList.contains('hidden');
     if (legacyVisible && remoteVisible) {
-      this._logToHA('error', `Both overlays visible for ${host}! Legacy: ${legacyVisible}, Remote: ${remoteVisible} - forcing legacy hidden`);
       this._legacyOverlayEl.classList.add('hidden');
-      this._legacyOverlayEl.style.display = 'none';
-      this._legacyOverlayEl.style.visibility = 'hidden';
-      // Also hide Now Playing badge
       if (this._nowPlayingEl) {
         this._nowPlayingEl.classList.remove('visible');
-        this._nowPlayingEl.style.display = 'none';
-        this._nowPlayingEl.style.visibility = 'hidden';
       }
     }
   }
