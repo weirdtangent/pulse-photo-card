@@ -676,9 +676,29 @@ class PulsePhotoCard extends HTMLElement {
       this._updateOverlayStatus();
     } catch (err) {
       console.warn('pulse-photo-card: overlay fetch failed', err);
+      this._logOverlayError(url, err, reason);
       this._overlayActive = false;
       this._showRemoteOverlay(false);
       this._updateOverlayStatus();
+    }
+  }
+
+  _logOverlayError(url, error, reason) {
+    if (!this._hass) {
+      return;
+    }
+    const host = this._extractPulseHostFromQuery() || 'unknown';
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    const message = `pulse-photo-card: overlay fetch failed for ${host} (${reason || 'unknown'}): ${errorMsg} - URL: ${url}`;
+    try {
+      this._hass.callService('system_log', 'write', {
+        message,
+        level: 'warning',
+        logger: 'pulse-photo-card',
+      });
+    } catch (logErr) {
+      // Silently fail if logging service isn't available
+      console.debug('pulse-photo-card: failed to log to HA system log', logErr);
     }
   }
 
