@@ -4,7 +4,7 @@
   <img src="https://raw.githubusercontent.com/weirdtangent/pulse-photo-card/main/assets/logo.png" alt="Pulse OS social preview" width="640" />
 </p>
 
-A beautiful, full-screen photo frame card for Home Assistant with smooth crossfades, clock overlay, optional navigation cycling, and first-class integration with the new PulseOS overlay endpoint.
+A full-screen photo frame card for Home Assistant with smooth crossfades and clock overlay. Integration with Pulse-OS adds live overlay, timers, and more.
 
 ## Features
 
