@@ -317,6 +317,13 @@ class PulsePhotoCard extends HTMLElement {
     this._updateNowPlaying();
     this._ensureOverlayPolling();
     this._updateOverlayStatus();
+
+    // Log initial state
+    const host = this._extractPulseHostFromQuery() || 'none';
+    const legacyFound = !!this._legacyOverlayEl;
+    const remoteFound = !!this._remoteOverlayEl;
+    this._logToHA('info', `card initialized: host=${host}, legacyOverlay=${legacyFound}, remoteOverlay=${remoteFound}, overlayEnabled=${this._overlayEnabled}`);
+
     this._handleOverlayRefreshTrigger('config');
   }
 
@@ -352,14 +359,19 @@ class PulsePhotoCard extends HTMLElement {
     const loadId = ++this._pendingLoadId;
     const resolvedUrl = await this._resolveUrl(rawPath);
 
-    if (
-      !resolvedUrl ||
-      loadId !== this._pendingLoadId ||
-      resolvedUrl === this._currentUrl
-    ) {
+    if (!resolvedUrl) {
+      this._logToHA('warning', `photo URL resolution failed for: ${rawPath}`);
+      return;
+    }
+    if (loadId !== this._pendingLoadId) {
+      this._logToHA('debug', `photo load superseded (loadId ${loadId} vs ${this._pendingLoadId})`);
+      return;
+    }
+    if (resolvedUrl === this._currentUrl) {
       return;
     }
 
+    this._logToHA('debug', `loading photo: ${resolvedUrl.substring(0, 100)}...`);
     this._swapImage(resolvedUrl);
   }
 
@@ -409,10 +421,12 @@ class PulsePhotoCard extends HTMLElement {
       next.onerror = null;
       this._frontLayer = nextLayerKey;
       this._currentUrl = url;
+      this._logToHA('debug', `photo loaded successfully: ${url.substring(0, 80)}...`);
     };
 
     next.onerror = (err) => {
       console.error('pulse-photo-card: failed to load image', err);
+      this._logToHA('error', `photo load failed: ${err.message || String(err)} - URL: ${url}`);
       next.onerror = null;
       next.onload = null;
     };
@@ -615,6 +629,8 @@ class PulsePhotoCard extends HTMLElement {
     if (!this._overlayEnabled) {
       this._overlayUrl = null;
     }
+    const hostname = host || 'none';
+    this._logToHA('info', `overlay config: enabled=${this._overlayEnabled}, url=${this._overlayUrl || 'none'}, refreshEntity=${this._overlayRefreshEntity || 'none'}, pollMs=${this._overlayPollMs}`);
     this._updateOverlayStatus();
   }
 
@@ -672,6 +688,7 @@ class PulsePhotoCard extends HTMLElement {
       this._remoteOverlayFrame.srcdoc = html;
       this._overlayActive = true;
       this._overlayLastFetch = Date.now();
+      this._logToHA('debug', `overlay fetch succeeded (${reason || 'unknown'}), showing remote overlay`);
       this._showRemoteOverlay(true);
       this._updateOverlayStatus();
     } catch (err) {
@@ -683,17 +700,16 @@ class PulsePhotoCard extends HTMLElement {
     }
   }
 
-  _logOverlayError(url, error, reason) {
+  _logToHA(level, message) {
     if (!this._hass) {
       return;
     }
     const host = this._extractPulseHostFromQuery() || 'unknown';
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    const message = `pulse-photo-card: overlay fetch failed for ${host} (${reason || 'unknown'}): ${errorMsg} - URL: ${url}`;
+    const fullMessage = `pulse-photo-card [${host}]: ${message}`;
     try {
       this._hass.callService('system_log', 'write', {
-        message,
-        level: 'warning',
+        message: fullMessage,
+        level: level || 'info',
         logger: 'pulse-photo-card',
       });
     } catch (logErr) {
@@ -702,21 +718,48 @@ class PulsePhotoCard extends HTMLElement {
     }
   }
 
+  _logOverlayError(url, error, reason) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    this._logToHA('warning', `overlay fetch failed (${reason || 'unknown'}): ${errorMsg} - URL: ${url}`);
+  }
+
   _showRemoteOverlay(showRemote) {
     if (!this._legacyOverlayEl) {
+      this._logToHA('warning', '_showRemoteOverlay called but legacy overlay element missing');
       return;
     }
+    const host = this._extractPulseHostFromQuery() || 'unknown';
+    const legacyHadHidden = this._legacyOverlayEl.classList.contains('hidden');
+    const remoteHadHidden = this._remoteOverlayEl ? this._remoteOverlayEl.classList.contains('hidden') : true;
+
     if (this._remoteOverlayEl) {
       if (showRemote) {
         this._remoteOverlayEl.classList.remove('hidden');
+        if (!remoteHadHidden) {
+          this._logToHA('warning', `Remote overlay already visible for ${host} - forcing show`);
+        }
       } else {
         this._remoteOverlayEl.classList.add('hidden');
       }
+    } else if (showRemote) {
+      this._logToHA('warning', `Attempted to show remote overlay for ${host} but element missing`);
     }
+
     if (showRemote) {
       this._legacyOverlayEl.classList.add('hidden');
+      if (legacyHadHidden) {
+        this._logToHA('warning', `Legacy overlay already hidden for ${host} - forcing hide`);
+      }
     } else {
       this._legacyOverlayEl.classList.remove('hidden');
+    }
+
+    // Defensive check: ensure only one overlay is visible
+    const legacyVisible = !this._legacyOverlayEl.classList.contains('hidden');
+    const remoteVisible = this._remoteOverlayEl && !this._remoteOverlayEl.classList.contains('hidden');
+    if (legacyVisible && remoteVisible) {
+      this._logToHA('error', `Both overlays visible for ${host}! Legacy: ${legacyVisible}, Remote: ${remoteVisible} - forcing legacy hidden`);
+      this._legacyOverlayEl.classList.add('hidden');
     }
   }
 
