@@ -1,3 +1,10 @@
+## [0.18.4](https://github.com/weirdtangent/pulse-photo-card/compare/v0.18.3...v0.18.4) (2025-11-23)
+
+
+### Bug Fixes
+
+* fix z-image for images ([ed9ba82](https://github.com/weirdtangent/pulse-photo-card/commit/ed9ba82267faa0e38e7b8eda15a620c7f5a482a9))
+
 ## [0.18.3](https://github.com/weirdtangent/pulse-photo-card/compare/v0.18.2...v0.18.3) (2025-11-23)
 
 
