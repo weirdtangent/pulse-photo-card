@@ -1,3 +1,10 @@
+## [0.16.1](https://github.com/weirdtangent/pulse-photo-card/compare/v0.16.0...v0.16.1) (2025-11-23)
+
+
+### Bug Fixes
+
+* switch to display: none for the hidden overlay ([0f60438](https://github.com/weirdtangent/pulse-photo-card/commit/0f6043843877e1f45ac8f83e3ddac443511fc20b))
+
 # [0.16.0](https://github.com/weirdtangent/pulse-photo-card/compare/v0.15.3...v0.16.0) (2025-11-23)
 
 
