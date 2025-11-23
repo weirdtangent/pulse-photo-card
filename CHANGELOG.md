@@ -1,3 +1,10 @@
+## [0.15.2](https://github.com/weirdtangent/pulse-photo-card/compare/v0.15.1...v0.15.2) (2025-11-23)
+
+
+### Bug Fixes
+
+* assume hostname is on .local for DNS resolution ([bccf17a](https://github.com/weirdtangent/pulse-photo-card/commit/bccf17a29d399f2d06bf5bc1b3f02d0373767a90))
+
 ## [0.15.1](https://github.com/weirdtangent/pulse-photo-card/compare/v0.15.0...v0.15.1) (2025-11-22)
 
 
