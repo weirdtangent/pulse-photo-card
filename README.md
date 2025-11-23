@@ -47,6 +47,20 @@ when not in use.
    - Resource type: `JavaScript Module`
 4. Enable Advanced Mode in your HA profile (needed for the Resources menu if it's hidden)
 
+## Prerequisite: DNS resolution for `PULSE_HOST`
+
+The card talks to PulseOS via Home Assistant, so your Home Assistant instance (container, VM, or bare metal host) must be able to resolve the same hostname that your kiosks send as `?pulse_host=<hostname>` / `PULSE_HOST`. If Home Assistant can't resolve that hostname to an IP address, the overlay iframe and the `sensor.<pulse_host>_now_playing` auto-detection will fail, even if the kiosk itself can reach PulseOS.
+
+Make sure you:
+
+- Add a proper DNS record (e.g., via your router, Pi-hole, AdGuard, or internal DNS)
+- Or add a hosts entry on the machine/container running Home Assistant
+- Or set `PULSE_HOST` to an IP address instead of a hostname (less ideal, but works)
+
+Once Home Assistant can resolve `PULSE_HOST`, the overlay and auto-entity features work reliably.
+
+**Quick test:** open the Home Assistant Terminal & SSH add-on (or exec into the HA container/VM) and run `ping <pulse_host>`. If the ping fails to resolve, fix DNS/hosts before continuing.
+
 ## Setup
 
 ### 1. Create Helper Sensors
@@ -144,6 +158,7 @@ This feature is particularly useful for kiosk displays where you want simple tap
 ## Troubleshooting
 
 - **Black screen** → The helper returned a path HA can't serve. Verify `sensor.pulse_current_photo_url` looks like `media-source://media_source/local/...`.
+- **Overlay iframe missing / Now Playing auto entity unavailable** → Home Assistant can't resolve your `PULSE_HOST`. Add a DNS/hosts entry or use an IP so the HA host can reach `http://<pulse_host>:8800/overlay`.
 - **401 Unauthorized in console** → You're hitting `/local/...` or added your own query parameters. Let the card resolve the media-source path; don't append cache busters, the signed `authSig` already handles caching.
 - **Still using old JS** → Bump the resource version (`/local/pulse-photo-card.js?v=2`) or use Advanced Mode → Resources → Reload.
 - **Clock not updating** → Hard-refresh the dashboard (Cmd/Ctrl + Shift + R) after saving to ensure the browser loads the latest card code.
