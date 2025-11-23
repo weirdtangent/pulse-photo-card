@@ -1,3 +1,10 @@
+## [0.18.2](https://github.com/weirdtangent/pulse-photo-card/compare/v0.18.1...v0.18.2) (2025-11-23)
+
+
+### Bug Fixes
+
+* getting more aggressive to hide that 2nd phantom NowPlaying box ([74ce6e4](https://github.com/weirdtangent/pulse-photo-card/commit/74ce6e43715a00029eb4323944dc0dc0ed977bd5))
+
 ## [0.18.1](https://github.com/weirdtangent/pulse-photo-card/compare/v0.18.0...v0.18.1) (2025-11-23)
 
 
