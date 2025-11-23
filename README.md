@@ -132,7 +132,7 @@ PulseOS 0.12+ exposes a ready-to-render overlay at `http://<pulse-host>:8800/ove
 
 Recommended setup:
 
-1. Ensure your kiosk URL already includes `?pulse_host=<hostname>` (PulseOS does this automatically). The card will map that hostname to `http://<host>:8800/overlay`.
+1. Ensure your kiosk URL already includes `?pulse_host=<hostname>` on the dashboard URL (PulseOS does this automatically). The card will map that hostname to `http://<host>:8800/overlay`.
 2. Create an MQTT sensor (or any HA entity) that mirrors `pulse/<host>/overlay/refresh` and name it `sensor.<pulse_host>_overlay_refresh` (for example, `sensor.pulse_living_room_overlay_refresh`). The card auto-detects that entity whenever `overlay_refresh_entity` is unset or `"auto"`. Each time the JSON payload changes, the card re-fetches the overlay HTML. Example:
 
    ```yaml
@@ -145,7 +145,7 @@ Recommended setup:
 
 3. Optionally tighten `overlay_poll_seconds` (default 120) if you want a quicker safety refresh.
 
-If the overlay endpoint can't be reached, the card automatically falls back to its legacy lower-left clock + Now Playing badge so users still see the time.
+If the overlay endpoint can't be reached, the card automatically falls back to its legacy overlay so users still see the time.
 
 ### Navigation Cycling
 
