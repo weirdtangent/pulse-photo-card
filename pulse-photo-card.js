@@ -166,19 +166,25 @@ class PulsePhotoCard extends HTMLElement {
           );
           opacity: 1;
           transition: opacity 180ms ease;
+          z-index: 1;
         }
 
         .overlay--legacy.hidden {
-          display: none;
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
         }
 
         .overlay--remote {
           pointer-events: auto;
+          z-index: 2;
         }
 
         .overlay--remote.hidden {
           display: none;
           pointer-events: none;
+          visibility: hidden;
         }
 
         .overlay__frame {
@@ -186,6 +192,12 @@ class PulsePhotoCard extends HTMLElement {
           height: 100%;
           border: none;
           background: transparent;
+          pointer-events: auto;
+        }
+
+        .overlay--legacy.hidden .now-playing {
+          display: none !important;
+          visibility: hidden !important;
         }
 
         .overlay__frame::-webkit-scrollbar {
@@ -786,15 +798,27 @@ class PulsePhotoCard extends HTMLElement {
 
     if (showRemote) {
       this._legacyOverlayEl.classList.add('hidden');
-      // Also explicitly hide the legacy Now Playing badge
+      // Also explicitly hide the legacy Now Playing badge and set inline styles as backup
       if (this._nowPlayingEl) {
         this._nowPlayingEl.classList.remove('visible');
+        this._nowPlayingEl.style.display = 'none';
+        this._nowPlayingEl.style.visibility = 'hidden';
       }
+      // Set inline styles as backup to ensure legacy overlay is hidden
+      this._legacyOverlayEl.style.display = 'none';
+      this._legacyOverlayEl.style.visibility = 'hidden';
       if (legacyHadHidden) {
         this._logToHA('warning', `Legacy overlay already hidden for ${host} - forcing hide`);
       }
     } else {
       this._legacyOverlayEl.classList.remove('hidden');
+      // Restore inline styles when showing legacy
+      this._legacyOverlayEl.style.display = '';
+      this._legacyOverlayEl.style.visibility = '';
+      if (this._nowPlayingEl) {
+        this._nowPlayingEl.style.display = '';
+        this._nowPlayingEl.style.visibility = '';
+      }
     }
 
     // Defensive check: ensure only one overlay is visible
@@ -803,9 +827,13 @@ class PulsePhotoCard extends HTMLElement {
     if (legacyVisible && remoteVisible) {
       this._logToHA('error', `Both overlays visible for ${host}! Legacy: ${legacyVisible}, Remote: ${remoteVisible} - forcing legacy hidden`);
       this._legacyOverlayEl.classList.add('hidden');
+      this._legacyOverlayEl.style.display = 'none';
+      this._legacyOverlayEl.style.visibility = 'hidden';
       // Also hide Now Playing badge
       if (this._nowPlayingEl) {
         this._nowPlayingEl.classList.remove('visible');
+        this._nowPlayingEl.style.display = 'none';
+        this._nowPlayingEl.style.visibility = 'hidden';
       }
     }
   }
