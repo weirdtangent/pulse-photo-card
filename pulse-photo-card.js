@@ -116,6 +116,7 @@ class PulsePhotoCard extends HTMLElement {
           background: #000;
           opacity: 0;
           transition: opacity var(--fade-ms, 500ms) ease-in-out;
+          z-index: 1;
         }
 
         img.visible {
@@ -175,6 +176,7 @@ class PulsePhotoCard extends HTMLElement {
 
         .overlay--remote {
           pointer-events: auto;
+          z-index: 1;
         }
 
         .overlay--remote.hidden {
