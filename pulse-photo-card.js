@@ -24,6 +24,7 @@ class PulsePhotoCard extends HTMLElement {
     this._overlayPollMs = 120000;
     this._overlayPollTimer = null;
     this._overlayLastTrigger = null;
+    this._overlayLastNowPlayingTrigger = null;
     this._overlayActive = false;
     this._overlayLastFetch = 0;
   }
@@ -441,6 +442,14 @@ class PulsePhotoCard extends HTMLElement {
       return;
     }
 
+    // Don't show legacy Now Playing badge if remote overlay is active
+    const remoteOverlayActive = this._overlayEnabled && this._overlayActive &&
+      this._remoteOverlayEl && !this._remoteOverlayEl.classList.contains('hidden');
+    if (remoteOverlayActive) {
+      this._nowPlayingEl.classList.remove('visible');
+      return;
+    }
+
     const targetEntity = this._resolvedNowPlayingEntity;
     if (!targetEntity) {
       this._nowPlayingEl.classList.remove('visible');
@@ -663,12 +672,40 @@ class PulsePhotoCard extends HTMLElement {
         triggerKey = `${entity.state ?? ''}|${entity.attributes?.version ?? ''}|${entity.last_changed ?? ''}`;
       }
     }
+
+    // Also check if now playing entity changed
+    let nowPlayingTriggerKey = null;
+    if (this._resolvedNowPlayingEntity) {
+      const nowPlayingEntity = this._hass?.states?.[this._resolvedNowPlayingEntity];
+      if (nowPlayingEntity) {
+        // Track state, attributes, and last_changed to detect any changes
+        const state = nowPlayingEntity.state ?? '';
+        const attrs = nowPlayingEntity.attributes || {};
+        const mediaTitle = attrs.media_title || attrs.media_album_name || '';
+        const mediaArtist = attrs.media_artist || attrs.media_album_artist || '';
+        nowPlayingTriggerKey = `${state}|${mediaTitle}|${mediaArtist}|${nowPlayingEntity.last_changed ?? ''}`;
+      }
+    }
+
     const now = Date.now();
+
+    // Check overlay refresh entity first
     if (triggerKey && triggerKey !== this._overlayLastTrigger) {
       this._overlayLastTrigger = triggerKey;
+      if (nowPlayingTriggerKey) {
+        this._overlayLastNowPlayingTrigger = nowPlayingTriggerKey;
+      }
       this._fetchOverlayRemote({ reason: 'entity', cacheKey: triggerKey });
       return;
     }
+
+    // Check now playing entity for changes
+    if (nowPlayingTriggerKey && nowPlayingTriggerKey !== this._overlayLastNowPlayingTrigger) {
+      this._overlayLastNowPlayingTrigger = nowPlayingTriggerKey;
+      this._fetchOverlayRemote({ reason: 'now_playing', cacheKey: nowPlayingTriggerKey });
+      return;
+    }
+
     if (!this._overlayActive || now - this._overlayLastFetch >= this._overlayPollMs) {
       this._fetchOverlayRemote({ reason: source || 'poll' });
     }
@@ -731,6 +768,8 @@ class PulsePhotoCard extends HTMLElement {
     const host = this._extractPulseHostFromQuery() || 'unknown';
     const legacyHadHidden = this._legacyOverlayEl.classList.contains('hidden');
     const remoteHadHidden = this._remoteOverlayEl ? this._remoteOverlayEl.classList.contains('hidden') : true;
+    const nowPlayingVisible = this._nowPlayingEl ? this._nowPlayingEl.classList.contains('visible') : false;
+    this._logToHA('debug', `_showRemoteOverlay(${showRemote}): legacyHidden=${legacyHadHidden}, remoteHidden=${remoteHadHidden}, nowPlayingVisible=${nowPlayingVisible}`);
 
     if (this._remoteOverlayEl) {
       if (showRemote) {
@@ -747,6 +786,10 @@ class PulsePhotoCard extends HTMLElement {
 
     if (showRemote) {
       this._legacyOverlayEl.classList.add('hidden');
+      // Also explicitly hide the legacy Now Playing badge
+      if (this._nowPlayingEl) {
+        this._nowPlayingEl.classList.remove('visible');
+      }
       if (legacyHadHidden) {
         this._logToHA('warning', `Legacy overlay already hidden for ${host} - forcing hide`);
       }
@@ -760,6 +803,10 @@ class PulsePhotoCard extends HTMLElement {
     if (legacyVisible && remoteVisible) {
       this._logToHA('error', `Both overlays visible for ${host}! Legacy: ${legacyVisible}, Remote: ${remoteVisible} - forcing legacy hidden`);
       this._legacyOverlayEl.classList.add('hidden');
+      // Also hide Now Playing badge
+      if (this._nowPlayingEl) {
+        this._nowPlayingEl.classList.remove('visible');
+      }
     }
   }
 
