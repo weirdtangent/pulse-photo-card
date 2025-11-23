@@ -1,3 +1,10 @@
+## [0.18.1](https://github.com/weirdtangent/pulse-photo-card/compare/v0.18.0...v0.18.1) (2025-11-23)
+
+
+### Bug Fixes
+
+* more effort to hide legacy NowPlaying if live /overlay loaded ([cc1ef26](https://github.com/weirdtangent/pulse-photo-card/commit/cc1ef26a4f6ec03cb79737e97eb759990bc1816f))
+
 # [0.18.0](https://github.com/weirdtangent/pulse-photo-card/compare/v0.17.0...v0.18.0) (2025-11-23)
 
 
