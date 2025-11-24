@@ -99,6 +99,7 @@ class PulsePhotoCard extends HTMLElement {
           position: relative;
           overflow: hidden;
           cursor: ${this._config.secondary_urls.length > 0 ? 'pointer' : 'default'};
+          font-family: "Inter", "Segoe UI", "Helvetica Neue", sans-serif, "Noto Color Emoji";
         }
 
         .frame {
