@@ -122,17 +122,17 @@ Running a shared dashboard across multiple kiosks? Set `now_playing_entity: auto
 | `now_playing_label` | string | `"Now Playing"` | Overrides the label shown above the track text |
 | `secondary_urls` | array | `[]` | Array of navigation paths to cycle through on tap |
 | `overlay_enabled` | bool | auto | Set to `false` to force the legacy overlay even if a kiosk overlay is available. Defaults to `true` when `overlay_url` resolves. |
-| `overlay_url` | string | `http://<pulse_host>:8800/overlay` | URL of the PulseOS overlay endpoint. Leave unset to auto-detect via `?pulse_host` query param. |
+| `overlay_url` | string | `http://<pulse_host>:8800/overlay` | URL of the PulseOS overlay endpoint. Leave unset to auto-detect via `?pulse_host` (the card auto-appends `.local` when the hostname lacks a domain). |
 | `overlay_refresh_entity` | string | `auto` | Optional HA entity (e.g., MQTT sensor) whose state changes when the kiosk publishes overlay refresh hints. Leave unset/`"auto"` to follow `sensor.<pulse_host>_overlay_refresh`; set a custom entity if you use a different naming pattern. |
 | `overlay_poll_seconds` | number | `120` | Fallback refresh cadence (seconds) if no refresh entity is configured or events are missed. Set to `0` to disable polling entirely. |
 
 ### Overlay endpoint integration
 
-PulseOS 0.12+ exposes a ready-to-render overlay at `http://<pulse-host>:8800/overlay` plus an MQTT hint topic `pulse/<host>/overlay/refresh`. The card can now embed that HTML in an `<iframe>` so timers, alarms, multi-clock layouts, notification badges, and Stop/Snooze buttons stay in perfect sync with the kiosk without reimplementing them in JavaScript.
+PulseOS 0.12+ exposes a ready-to-render overlay at `http://<pulse-host>:8800/overlay` plus an MQTT hint topic `pulse/<host>/overlay/refresh`. The card can now embed that HTML in an `<iframe>` so timers, alarms, multi-clock layouts, notification badges, and Stop/Snooze buttons stay in perfect sync with the kiosk without reimplementing them in JavaScript. When a kiosk only reports a bare hostname (no dots), the card automatically tries the `.local` mDNS suffix so Home Assistant can still reach it.
 
 Recommended setup:
 
-1. Ensure your kiosk URL already includes `?pulse_host=<hostname>` on the dashboard URL (PulseOS does this automatically). The card will map that hostname to `http://<host>:8800/overlay`.
+1. Ensure your kiosk URL already includes `?pulse_host=<hostname>` on the dashboard URL (PulseOS does this automatically). The card will map that hostname to `http://<host>:8800/overlay`, automatically appending `.local` whenever the host lacks a domain segment.
 2. Create an MQTT sensor (or any HA entity) that mirrors `pulse/<host>/overlay/refresh` and name it `sensor.<pulse_host>_overlay_refresh` (for example, `sensor.pulse_living_room_overlay_refresh`). The card auto-detects that entity whenever `overlay_refresh_entity` is unset or `"auto"`. Each time the JSON payload changes, the card re-fetches the overlay HTML. Example:
 
    ```yaml
@@ -158,7 +158,7 @@ This feature is particularly useful for kiosk displays where you want simple tap
 ## Troubleshooting
 
 - **Black screen** → The helper returned a path HA can't serve. Verify `sensor.pulse_current_photo_url` looks like `media-source://media_source/local/...`.
-- **Overlay iframe missing / Now Playing auto entity unavailable** → Home Assistant can't resolve your `PULSE_HOST`. Add a DNS/hosts entry or use an IP so the HA host can reach `http://<pulse_host>:8800/overlay`.
+- **Overlay iframe missing / Now Playing auto entity unavailable** → Home Assistant can't resolve your `PULSE_HOST`. Add a DNS/hosts entry or use an IP so the HA host can reach the overlay endpoint (the card already tries `<pulse_host>.local` when no domain is provided).
 - **401 Unauthorized in console** → You're hitting `/local/...` or added your own query parameters. Let the card resolve the media-source path; don't append cache busters, the signed `authSig` already handles caching.
 - **Still using old JS** → Bump the resource version (`/local/pulse-photo-card.js?v=2`) or use Advanced Mode → Resources → Reload.
 - **Clock not updating** → Hard-refresh the dashboard (Cmd/Ctrl + Shift + R) after saving to ensure the browser loads the latest card code.

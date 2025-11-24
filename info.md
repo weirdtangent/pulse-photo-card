@@ -75,7 +75,7 @@ Set `now_playing_entity: auto` and include `?pulse_host=<hostname>` in the kiosk
 | `now_playing_label` | string | `"Now Playing"` | Overrides the label shown above the track text |
 | `secondary_urls` | array | `[]` | Array of navigation paths to cycle through on tap |
 | `overlay_enabled` | bool | auto | Override to force-enable/disable the kiosk overlay embed. Defaults to `true` when `overlay_url` resolves. |
-| `overlay_url` | string | `http://<pulse_host>:8800/overlay` | PulseOS overlay endpoint URL. Leave blank to auto-detect via `?pulse_host`. |
+| `overlay_url` | string | `http://<pulse_host>:8800/overlay` | PulseOS overlay endpoint URL. Leave blank to auto-detect via `?pulse_host` (a `.local` suffix is added when the hostname has no domain). |
 | `overlay_refresh_entity` | string | `auto` | HA entity whose state changes when the kiosk publishes `pulse/<host>/overlay/refresh`. Leave unset/`"auto"` to follow `sensor.<pulse_host>_overlay_refresh`. |
 | `overlay_poll_seconds` | number | `120` | Backup refresh cadence (seconds). Set `0` to disable polling. |
 

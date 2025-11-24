@@ -660,7 +660,8 @@ class PulsePhotoCard extends HTMLElement {
         ? this._config.overlay_url.trim()
         : null;
     const host = this._extractPulseHostFromQuery();
-    const inferredUrl = host ? `http://${host}:8800/overlay` : null;
+    const overlayHost = this._normalizeOverlayHostname(host);
+    const inferredUrl = overlayHost ? `http://${overlayHost}:8800/overlay` : null;
     this._overlayUrl = explicitUrl || inferredUrl;
     const enabled =
       typeof this._config.overlay_enabled === 'boolean'
@@ -868,6 +869,21 @@ class PulsePhotoCard extends HTMLElement {
     } catch (err) {
       return null;
     }
+  }
+
+  _normalizeOverlayHostname(host) {
+    if (!host) {
+      return null;
+    }
+    const trimmed = host.trim();
+    if (!trimmed) {
+      return null;
+    }
+    // Hostnames with dots (domain/IP) or colons (IPv6) already include a domain segment.
+    if (trimmed.includes('.') || trimmed.includes(':')) {
+      return trimmed;
+    }
+    return `${trimmed}.local`;
   }
 
   _sanitizeHostname(value) {
