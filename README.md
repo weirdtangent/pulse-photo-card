@@ -49,17 +49,18 @@ when not in use.
 
 ## Prerequisite: DNS resolution for `PULSE_HOST`
 
-The card talks to PulseOS via Home Assistant, so your Home Assistant instance (container, VM, or bare metal host) must be able to resolve the same hostname that your kiosks send as `?pulse_host=<hostname>` / `PULSE_HOST`. If Home Assistant can't resolve that hostname to an IP address, the overlay iframe and the `sensor.<pulse_host>_now_playing` auto-detection will fail, even if the kiosk itself can reach PulseOS.
+The card talks to PulseOS via Home Assistant, so your Home Assistant instance (container, VM, or bare metal host) must be able to resolve the same hostname that your kiosks send as `?pulse_host=<hostname>` / `PULSE_HOST`. If Home Assistant can't resolve that hostname (or its `.local` mDNS variant), the overlay iframe and the `sensor.<pulse_host>_now_playing` auto-detection will fail, even if the kiosk itself can reach PulseOS.
 
 Make sure you:
 
 - Add a proper DNS record (e.g., via your router, Pi-hole, AdGuard, or internal DNS)
 - Or add a hosts entry on the machine/container running Home Assistant
+- Or rely on mDNS/`.local` resolution—**the card now automatically tries `<pulse_host>.local` when the kiosk reports a bare hostname**
 - Or set `PULSE_HOST` to an IP address instead of a hostname (less ideal, but works)
 
-Once Home Assistant can resolve `PULSE_HOST`, the overlay and auto-entity features work reliably.
+Once Home Assistant can resolve `PULSE_HOST` (or `<pulse_host>.local`), the overlay and auto-entity features work reliably.
 
-**Quick test:** open the Home Assistant Terminal & SSH add-on (or exec into the HA container/VM) and run `ping <pulse_host>`. If the ping fails to resolve, fix DNS/hosts before continuing.
+**Quick test:** open the Home Assistant Terminal & SSH add-on (or exec into the HA container/VM) and run `ping <pulse_host>` and `ping <pulse_host>.local`. If both fail to resolve, fix DNS/hosts or enable mDNS before continuing.
 
 ## Setup
 
