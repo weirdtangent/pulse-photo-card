@@ -1,3 +1,10 @@
+## [0.18.7](https://github.com/weirdtangent/pulse-photo-card/compare/v0.18.6...v0.18.7) (2025-11-24)
+
+
+### Bug Fixes
+
+* setting font-family to include 'Noto Color Emoji' which we default to in Pulse-OS ([ea12f22](https://github.com/weirdtangent/pulse-photo-card/commit/ea12f22e03828e9d93be9d87ef4a44a13683bae3))
+
 ## [0.18.6](https://github.com/weirdtangent/pulse-photo-card/compare/v0.18.5...v0.18.6) (2025-11-24)
 
 
