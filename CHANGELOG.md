@@ -1,3 +1,10 @@
+## [0.18.6](https://github.com/weirdtangent/pulse-photo-card/compare/v0.18.5...v0.18.6) (2025-11-24)
+
+
+### Bug Fixes
+
+* add .local to PULSE_HOST if it doesn't already include a domain name; .local is where HA assumes itself to be ([67704bb](https://github.com/weirdtangent/pulse-photo-card/commit/67704bb6b40e869d56813947f6aed3e899bdd969))
+
 ## [0.18.5](https://github.com/weirdtangent/pulse-photo-card/compare/v0.18.4...v0.18.5) (2025-11-23)
 
 
