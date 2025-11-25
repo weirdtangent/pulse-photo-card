@@ -393,6 +393,15 @@ class PulsePhotoCard extends HTMLElement {
     this._logToHA('info', `card initialized: host=${host}, legacyOverlay=${legacyFound}, remoteOverlay=${remoteFound}, overlayEnabled=${this._overlayEnabled}`);
 
     this._handleOverlayRefreshTrigger('config');
+    if (!window.__pulsePhotoCardVersionLogged) {
+      try {
+        const version = this._config?.version || 'dev';
+        console.info(`pulse-photo-card: runtime version ${version} loaded`);
+      } catch (versionLogErr) {
+        console.warn('pulse-photo-card: failed to log version', versionLogErr);
+      }
+      window.__pulsePhotoCardVersionLogged = true;
+    }
   }
 
   set hass(hass) {
@@ -1099,6 +1108,16 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
   'use strict';
 
   let globalTapHandler = null;
+  let globalTapDebug = true;
+  const TAP_EVENT_TYPES = typeof window !== 'undefined' && window.PointerEvent
+    ? ['pointerup']
+    : ['click'];
+  const TAP_EVENT_TARGETS = typeof window !== 'undefined'
+    ? [window, document]
+    : [document];
+  const TAP_HEARTBEAT_INTERVAL_MS = 15000;
+  let tapHeartbeatTimer = null;
+  let lastTapActivity = Date.now();
   const TAP_EVENT_TYPES = (typeof window !== 'undefined' && window.PointerEvent)
     ? ['pointerup']
     : ['click'];
@@ -1109,7 +1128,7 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
   function attachGlobalTapHandler(handler) {
     TAP_EVENT_TARGETS.forEach((target) => {
       TAP_EVENT_TYPES.forEach((eventType) => {
-        target.addEventListener(eventType, handler, true);
+        target.addEventListener(eventType, handler, { capture: true, passive: true });
       });
     });
   }
@@ -1117,12 +1136,15 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
   function detachGlobalTapHandler(handler) {
     TAP_EVENT_TARGETS.forEach((target) => {
       TAP_EVENT_TYPES.forEach((eventType) => {
-        target.removeEventListener(eventType, handler, true);
+        target.removeEventListener(eventType, handler, { capture: true });
       });
     });
   }
 
   function logGlobalTap(message, detail) {
+    if (!globalTapDebug) {
+      return;
+    }
     try {
       if (detail) {
         console.info("pulse-photo-card: " + message, detail);
@@ -1132,6 +1154,71 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
     } catch (err) {
       // Ignore console logging failures
     }
+  }
+
+  function attachGlobalTapHandler(handler) {
+    TAP_EVENT_TARGETS.forEach((target) => {
+      TAP_EVENT_TYPES.forEach((eventType) => {
+        target.addEventListener(eventType, handler, { capture: true, passive: true });
+      });
+    });
+  }
+
+  function detachGlobalTapHandler(handler) {
+    TAP_EVENT_TARGETS.forEach((target) => {
+      TAP_EVENT_TYPES.forEach((eventType) => {
+        target.removeEventListener(eventType, handler, { capture: true });
+      });
+    });
+  }
+
+  function describeTarget(node) {
+    if (!node) {
+      return 'none';
+    }
+    const parts = [];
+    if (node.tagName) {
+      parts.push(node.tagName.toLowerCase());
+    }
+    if (node.id) {
+      parts.push(`#${node.id}`);
+    }
+    if (node.classList && node.classList.length > 0) {
+      parts.push(
+        Array.from(node.classList)
+          .map((className) => `.${className}`)
+          .join('')
+      );
+    }
+    return parts.join('') || 'anonymous';
+  }
+
+  function recordTapActivity() {
+    lastTapActivity = Date.now();
+  }
+
+  function startTapHeartbeat() {
+    if (tapHeartbeatTimer || typeof window === 'undefined') {
+      return;
+    }
+    tapHeartbeatTimer = window.setInterval(() => {
+      const config = loadStoredTapConfig();
+      if (!config) {
+        return;
+      }
+      const tapMode = config.globalTapMode || 'auto';
+      if (!shouldEnableGlobalTap(tapMode)) {
+        return;
+      }
+      const idleMs = Date.now() - lastTapActivity;
+      if (!globalTapHandler || idleMs > TAP_HEARTBEAT_INTERVAL_MS * 2) {
+        logGlobalTap("global tap heartbeat: reattaching handler", {
+          idleMs,
+          mode: tapMode,
+        });
+        setupGlobalTapHandler(config.homePath, config.secondaryUrls, tapMode);
+      }
+    }, TAP_HEARTBEAT_INTERVAL_MS);
   }
 
   // Detect if we're running on a Pulse device (kiosk mode)
@@ -1195,6 +1282,68 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
         localStorage.removeItem(key);
       }
     }
+  }
+
+  function cycleGlobalTap(config, reason, eventType) {
+    if (!config || !config.secondaryUrls || config.secondaryUrls.length === 0) {
+      logGlobalTap("global tap skip: missing config", { reason });
+      return false;
+    }
+
+    const { homePath: configHomePath, secondaryUrls } = config;
+    const storageKey = `pulse-photo-card-url-index-${configHomePath}`;
+    const currentPath = window.location.pathname;
+    let currentIndex = parseInt(localStorage.getItem(storageKey) || '0', 10);
+    const actualIndex = findUrlIndex(currentPath, secondaryUrls, configHomePath);
+
+    if (actualIndex !== null && currentIndex !== actualIndex) {
+      currentIndex = actualIndex;
+    } else if (actualIndex === null && currentIndex > 0) {
+      logGlobalTap("global tap skip: state mismatch", {
+        reason,
+        storedIndex: currentIndex,
+        path: currentPath,
+      });
+      return false;
+    }
+
+    currentIndex = (currentIndex + 1) % (secondaryUrls.length + 1);
+    const targetPath = currentIndex === 0 ? configHomePath : secondaryUrls[currentIndex - 1];
+    localStorage.setItem(storageKey, currentIndex.toString());
+    logGlobalTap("global tap navigation", {
+      from: normalizePath(currentPath),
+      to: normalizePath(targetPath),
+      nextIndex: currentIndex,
+      mode: config.globalTapMode || 'auto',
+      reason,
+      eventType,
+    });
+    window.location.href = preserveKioskParams(targetPath);
+    return true;
+  }
+
+  function handleGlobalTapKeydown(event) {
+    if (!event || !event.key || event.defaultPrevented) {
+      return;
+    }
+    if (event.key.toLowerCase() !== 't') {
+      return;
+    }
+    const targetTag = event.target?.tagName?.toLowerCase() || '';
+    if (['input', 'textarea', 'select'].includes(targetTag) || event.target?.isContentEditable) {
+      return;
+    }
+    const config = loadStoredTapConfig();
+    if (!config) {
+      return;
+    }
+    const tapMode = config.globalTapMode || 'auto';
+    if (!shouldEnableGlobalTap(tapMode)) {
+      return;
+    }
+    event.preventDefault();
+    recordTapActivity();
+    cycleGlobalTap(config, 'shortcut', 'keydown');
   }
 
   // Shared utility functions
@@ -1301,6 +1450,8 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
 
     // Store config in localStorage so it persists across page navigations
     localStorage.setItem(configKey, JSON.stringify({ homePath, secondaryUrls, globalTapMode }));
+    recordTapActivity();
+    startTapHeartbeat();
 
     globalTapHandler = function(e) {
       const config = loadStoredTapConfig();
@@ -1368,51 +1519,14 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
         }
       }
 
-      const storageKey = `pulse-photo-card-url-index-${configHomePath}`;
-      const currentPath = window.location.pathname;
+      recordTapActivity();
 
-      // Determine current index - check stored value first, then verify against actual path
-      let currentIndex = parseInt(localStorage.getItem(storageKey) || '0', 10);
-      const actualIndex = findUrlIndex(currentPath, secondaryUrls, configHomePath);
-
-      // If stored index doesn't match actual path, use actual index
-      if (actualIndex !== null) {
-        if (currentIndex !== actualIndex) {
-          currentIndex = actualIndex;
-        }
-      } else if (currentIndex > 0) {
-        // Stored index suggests we're on a secondary URL, but path doesn't match
-        // This might be a stale state, so don't handle
-        logGlobalTap("global tap skip: state mismatch", {
-          target: describeTarget(target),
-          storedIndex: currentIndex,
-        });
-        return;
-      }
-
-      // Increment index and wrap around (0 = home, 1+ = secondary URLs)
-      currentIndex = (currentIndex + 1) % (secondaryUrls.length + 1);
-
-      // Determine target path
-      const targetPath = currentIndex === 0 ? configHomePath : secondaryUrls[currentIndex - 1];
-
-      // Prevent default behavior and stop propagation
+      // Prevent default behavior and stop propagation so HA doesn't treat it as a normal click
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
 
-      // Store the new index
-      localStorage.setItem(storageKey, currentIndex.toString());
-
-      // Navigate with preserved kiosk parameters
-      logGlobalTap("global tap navigation", {
-        from: normalizePath(currentPath),
-        to: normalizePath(targetPath),
-        nextIndex: currentIndex,
-        mode: effectiveMode,
-        eventType: e.type,
-      });
-      window.location.href = preserveKioskParams(targetPath);
+      cycleGlobalTap(config, 'pointer', e.type);
     };
 
     attachGlobalTapHandler(globalTapHandler);
@@ -1444,6 +1558,10 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
     setupGlobalTapHandler(homePath, secondaryUrls, tapMode);
   }
 
+  if (typeof window !== 'undefined') {
+    window.addEventListener('keydown', handleGlobalTapKeydown, { capture: true });
+  }
+
   // Run initialization when DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeOnLoad);
@@ -1454,6 +1572,19 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
   // Expose setup function for pulse-photo-card to use
   window.PulsePhotoCardGlobalTap = {
     setup: setupGlobalTapHandler,
+    debug(enabled = true) {
+      globalTapDebug = Boolean(enabled);
+      logGlobalTap(`global tap debug ${globalTapDebug ? 'enabled' : 'disabled'}`);
+    },
+    cycle(reason = 'manual') {
+      const config = loadStoredTapConfig();
+      if (!config) {
+        logGlobalTap('global tap skip: manual cycle missing config', { reason });
+        return false;
+      }
+      recordTapActivity();
+      return cycleGlobalTap(config, reason, 'manual');
+    },
   };
 })();
 
