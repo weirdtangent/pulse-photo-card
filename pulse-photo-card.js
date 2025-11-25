@@ -916,15 +916,11 @@ class PulsePhotoCard extends HTMLElement {
   }
 
   _findUrlIndex(path, secondaryUrls, homePath) {
-    const normalizedPath = this._normalizePath(path);
-
-    if (normalizedPath === this._normalizePath(homePath)) {
+    if (this._pathsMatch(path, homePath)) {
       return 0; // Home
     }
 
-    const matchingIndex = secondaryUrls.findIndex(url => {
-      return this._normalizePath(url) === normalizedPath;
-    });
+    const matchingIndex = secondaryUrls.findIndex(url => this._pathsMatch(path, url));
 
     return matchingIndex >= 0 ? matchingIndex + 1 : null;
   }
@@ -995,7 +991,33 @@ class PulsePhotoCard extends HTMLElement {
   }
 
   _normalizePath(path) {
-    return path.startsWith('/') ? path : `/${path}`;
+    if (!path) {
+      return '/';
+    }
+    let normalized = path.startsWith('/') ? path : `/${path}`;
+    normalized = normalized.replace(/\/+$/, '');
+    return normalized || '/';
+  }
+
+  _pathsMatch(pathA, pathB) {
+    const normalizedA = this._normalizePath(pathA);
+    const normalizedB = this._normalizePath(pathB);
+    if (normalizedA === normalizedB) {
+      return true;
+    }
+    const stripDefaultIndex = (value) => {
+      if (value === '/') {
+        return value;
+      }
+      return value.replace(/\/0$/, '') || '/';
+    };
+    const aSansIndex = stripDefaultIndex(normalizedA);
+    const bSansIndex = stripDefaultIndex(normalizedB);
+    return (
+      normalizedA === bSansIndex ||
+      normalizedB === aSansIndex ||
+      aSansIndex === bSansIndex
+    );
   }
 
   _preserveKioskParams(path) {
@@ -1056,7 +1078,34 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
 
   // Shared utility functions
   function normalizePath(path) {
-    return path.startsWith('/') ? path : `/${path}`;
+    if (!path) {
+      return '/';
+    }
+    let normalized = path.startsWith('/') ? path : `/${path}`;
+    normalized = normalized.replace(/\/+$/, '');
+    return normalized || '/';
+  }
+
+  function stripDefaultIndex(path) {
+    if (!path || path === '/') {
+      return path || '/';
+    }
+    return path.replace(/\/0$/, '') || '/';
+  }
+
+  function pathsMatch(a, b) {
+    const normalizedA = normalizePath(a);
+    const normalizedB = normalizePath(b);
+    if (normalizedA === normalizedB) {
+      return true;
+    }
+    const aSansIndex = stripDefaultIndex(normalizedA);
+    const bSansIndex = stripDefaultIndex(normalizedB);
+    return (
+      normalizedA === bSansIndex ||
+      normalizedB === aSansIndex ||
+      aSansIndex === bSansIndex
+    );
   }
 
   function preserveKioskParams(path) {
@@ -1076,16 +1125,11 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
   }
 
   function findUrlIndex(path, secondaryUrls, homePath) {
-    const normalizedPath = normalizePath(path);
-    const normalizedHome = normalizePath(homePath);
-
-    if (normalizedPath === normalizedHome) {
+    if (pathsMatch(path, homePath)) {
       return 0; // Home
     }
 
-    const matchingIndex = secondaryUrls.findIndex(url => {
-      return normalizePath(url) === normalizedPath;
-    });
+    const matchingIndex = secondaryUrls.findIndex(url => pathsMatch(path, url));
 
     return matchingIndex >= 0 ? matchingIndex + 1 : null;
   }
