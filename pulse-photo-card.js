@@ -103,6 +103,7 @@ class PulsePhotoCard extends HTMLElement {
           overflow: hidden;
           cursor: default;
           font-family: "Inter", "Segoe UI", "Helvetica Neue", sans-serif, "Noto Color Emoji";
+          background: #000;
         }
 
         .frame {
@@ -130,6 +131,7 @@ class PulsePhotoCard extends HTMLElement {
         .overlay {
           position: absolute;
           inset: 0;
+          background: transparent !important;
         }
 
         .overlay-status {
