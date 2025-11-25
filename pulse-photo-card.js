@@ -1274,6 +1274,7 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
       }
 
       const { homePath: configHomePath, secondaryUrls, globalTapMode: configTapMode } = config;
+      const effectiveMode = configTapMode || globalTapMode || 'auto';
 
       // Skip tap handling if disable_km parameter is present (used for editing)
       const urlParams = new URLSearchParams(window.location.search);
@@ -1299,7 +1300,11 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
       }
 
       // Skip if clicking on cards that have their own tap actions
-      if (target.closest('hui-card') && target.closest('hui-card').config?.tap_action) {
+      if (
+        effectiveMode !== 'always' &&
+        target.closest('hui-card') &&
+        target.closest('hui-card').config?.tap_action
+      ) {
         return;
       }
 
@@ -1340,7 +1345,7 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
         from: normalizePath(currentPath),
         to: normalizePath(targetPath),
         nextIndex: currentIndex,
-        mode: configTapMode || globalTapMode || 'auto',
+        mode: effectiveMode,
       });
       window.location.href = preserveKioskParams(targetPath);
     };
