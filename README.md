@@ -10,11 +10,9 @@ A full-screen photo frame card for Home Assistant with smooth crossfades and clo
 
 - **Smooth crossfades** - Double-buffered image transitions with no white flash
 - **Clock overlay** - Displays current time and date with automatic locale/timezone support
-- **Now Playing badge** - Optional artist/title ribbon powered by any HA entity
-- **Media source support** - Works with Home Assistant's media browser and signed URLs
-- **Navigation cycling** - Optional tap-to-cycle through multiple dashboards (perfect for kiosks)
-- **[PulseOS](https://github.com/weirdtangent/pulse-os) overlay embed** - Automatically mirrors the kiosk-hosted overlay (multiple clocks, timers, alarms, notification bar, buttons) and falls back to the built-in clock if unreachable
-- **Responsive design** - Adapts to any screen size with responsive typography
+- **Now Playing badge** - Optional artist/title ribbon powered by any HA entity including Music Assistant when playing through a full media_player entity
+- **[PulseOS](https://github.com/weirdtangent/pulse-os) overlay embed** - Automatically mirrors the kiosk-hosted overlay (multiple clocks, timers, alarms, notification bar, buttons) and falls back to the built-in clock if unreachable. Also allows tap-to-cycle through multiple dashboards (perfect for kiosks)
+- **Responsive design** - Adapts to any (full) screen size with responsive typography (best when the dashboard is also using HACS kiosk_mode)
 
 ## Preview
 
@@ -27,16 +25,13 @@ I used `?disable_km` in order to turn off kiosk mode so I could show a preview, 
 ## Why the card stands on its own
 
 Even without [PulseOS](https://github.com/weirdtangent/pulse-os), this card gives you a smooth, full-screen slideshow: crossfades between
-signed media-source URLs, an optional customizable clock/Now Playing badge, and a tap handler
-that can rotate through multiple dashboards via `secondary_urls`. Hook it up to any sensor that
-exposes a JPEG/PNG path or `media-source://` URL, and you instantly have a polished photo frame
-dashboard that keeps burning in at bay.
+signed media-source URLs along with an optional customizable clock/Now Playing badge. Hook it up to any sensor that exposes a
+JPEG/PNG path or `media-source://` URL, and you instantly have a polished photo frame dashboard that keeps burning in at bay.
 
 You still get:
 
 - automatic fade transitions (`fade_ms`)
 - a badge that follows `media_title`/`media_artist` from any HA entity
-- navigation cycling across dashboards on tap
 - the embedded clock/overlay when the kiosk integration isn’t available
 
 Use the helper sensors below to control image selection, then point the card at `sensor.pulse_current_photo_url`
@@ -106,9 +101,9 @@ views:
         entity: sensor.pulse_current_photo_url
         fade_ms: 2000              # optional, default 1000
         now_playing_entity: auto   # optional; follows sensor.<pulse_host>_now_playing
-        secondary_urls:            # optional, array of URLs to cycle through on tap
-          - /pulse-house
-          - /pulse-security
+        show_overlay_status: true  # optional; set to false to hdie the notification bar
+        secondary_urls:            # optional; set to let a click/tap take you somewhere
+          - /net-dev-1-hour
 ```
 
 Point `now_playing_entity` at any Home Assistant entity that exposes `media_title` / `media_artist` attributes (for example, Music Assistant or Snapcast `media_player` entities). You can also supply a sensor that already formats the text (the badge will show the sensor state whenever it isn't `unknown`/`unavailable`). Leave the option out entirely if you don't want a Now Playing pill.
