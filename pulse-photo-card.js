@@ -33,12 +33,15 @@ class PulsePhotoCard extends HTMLElement {
     this._viewContainerEl = null;
     this._viewContentEl = null;
     this._navButtonsEl = null;
+    this._notificationBarEl = null;
     this._cardHelpers = null;
     this._renderedCards = [];
     this._lovelaceContext = null;
     this._pendingViewRenderRetry = null;
     this._isRenderingView = false;
     this._viewHasContent = false;
+    this._viewTransitioning = false;
+    this._viewTransitionTimer = null;
   }
 
   // ============================================================================
@@ -89,6 +92,11 @@ class PulsePhotoCard extends HTMLElement {
     this._currentViewIndex = -1;
     this._clearViewTimeout();
     this._clearViewRenderRetry();
+    if (this._viewTransitionTimer) {
+      clearTimeout(this._viewTransitionTimer);
+      this._viewTransitionTimer = null;
+    }
+    this._viewTransitioning = false;
 
     this._resolvedNowPlayingEntity = this._resolveNowPlayingEntity();
     const showNowPlaying = Boolean(this._resolvedNowPlayingEntity);
@@ -168,6 +176,16 @@ class PulsePhotoCard extends HTMLElement {
       `
       : '';
 
+    const showNotificationBar = this._config.show_overlay_status || hasViews;
+    const notificationBarMarkup = showNotificationBar
+      ? `
+        <div class="notification-bar">
+          ${overlayStatusMarkup}
+          ${navButtonsMarkup}
+        </div>
+      `
+      : '';
+
     this.shadowRoot.innerHTML = `
       <style>
         :host,
@@ -218,10 +236,29 @@ class PulsePhotoCard extends HTMLElement {
           background: transparent !important;
         }
 
-        .overlay-status {
+        .notification-bar {
           position: fixed;
-          top: 18px;
-          left: 18px;
+          top: 0;
+          left: 0;
+          right: 0;
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          padding: 12px 18px;
+          z-index: 10;
+          background: rgba(0, 0, 0, 0.35);
+          border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+          box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+          backdrop-filter: blur(16px);
+          transition: opacity 180ms ease;
+        }
+
+        .notification-bar.notification-bar--hidden {
+          opacity: 0;
+          pointer-events: none;
+        }
+
+        .overlay-status {
           display: flex;
           align-items: center;
           gap: 0.4rem;
@@ -232,8 +269,7 @@ class PulsePhotoCard extends HTMLElement {
           background: rgba(0, 0, 0, 0.45);
           color: #fff;
           pointer-events: none;
-          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
-          z-index: 10;
+          box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
         }
 
         .overlay-status.hidden {
@@ -384,13 +420,11 @@ class PulsePhotoCard extends HTMLElement {
         }
 
         .nav-buttons {
-          position: fixed;
-          top: 18px;
-          left: 18px;
           display: flex;
           align-items: center;
           gap: 0.5rem;
-          z-index: 10;
+          order: -1;
+          margin-right: auto;
         }
 
         .nav-buttons.hidden {
@@ -580,11 +614,10 @@ class PulsePhotoCard extends HTMLElement {
           <img class="layer layer-a visible" />
           <img class="layer layer-b" />
         </div>
-        ${overlayStatusMarkup}
+        ${notificationBarMarkup}
         ${versionPillMarkup}
         ${remoteOverlayMarkup}
         ${clickThroughLayerMarkup}
-        ${navButtonsMarkup}
         ${viewContainerMarkup}
         <div class="overlay overlay--legacy">
           <div class="overlay__content">
@@ -624,6 +657,7 @@ class PulsePhotoCard extends HTMLElement {
     this._viewContainerEl = this.shadowRoot.querySelector('.view-container');
     this._viewContentEl = this.shadowRoot.querySelector('.view-content');
     this._navButtonsEl = this.shadowRoot.querySelector('.nav-buttons');
+    this._notificationBarEl = this.shadowRoot.querySelector('.notification-bar');
     this._clickThroughLayer = this.shadowRoot.querySelector('.click-through-layer');
 
     // Set up navigation button handlers
@@ -940,6 +974,11 @@ class PulsePhotoCard extends HTMLElement {
     }
     this._clearViewTimeout();
     this._clearViewRenderRetry();
+    if (this._viewTransitionTimer) {
+      clearTimeout(this._viewTransitionTimer);
+      this._viewTransitionTimer = null;
+    }
+    this._viewTransitioning = false;
     this._cleanupRenderedCards();
     this._updateOverlayStatus();
   }
@@ -1253,6 +1292,8 @@ class PulsePhotoCard extends HTMLElement {
       emojiEl.textContent = '🕒';
       textEl.textContent = 'Legacy overlay';
     }
+
+    this._updateNavigationButtons();
   }
 
   _extractPulseHostFromQuery() {
@@ -1492,9 +1533,10 @@ class PulsePhotoCard extends HTMLElement {
     const isOnPhoto = this._currentViewIndex === -1;
     const isOnFirstView = this._currentViewIndex === 0;
     const isOnLastView = this._currentViewIndex === this._views.length - 1;
+    const isTransitioning = this._viewTransitioning;
 
     // Show/hide navigation buttons
-    if (isOnPhoto || !this._viewHasContent) {
+    if (isOnPhoto || !this._viewHasContent || isTransitioning) {
       this._navButtonsEl.classList.add('hidden');
     } else {
       this._navButtonsEl.classList.remove('hidden');
@@ -1514,6 +1556,16 @@ class PulsePhotoCard extends HTMLElement {
     }
     if (nextBtn) {
       nextBtn.disabled = isOnLastView;
+    }
+
+    if (this._notificationBarEl) {
+      const overlayVisible = !!(this._overlayStatusEl && !this._overlayStatusEl.classList.contains('hidden'));
+      const navVisible = !this._navButtonsEl.classList.contains('hidden');
+      if (!overlayVisible && !navVisible) {
+        this._notificationBarEl.classList.add('notification-bar--hidden');
+      } else {
+        this._notificationBarEl.classList.remove('notification-bar--hidden');
+      }
     }
   }
 
@@ -1806,6 +1858,11 @@ class PulsePhotoCard extends HTMLElement {
 
   _showView() {
     if (this._viewContainerEl) {
+      this._viewTransitioning = true;
+      if (this._viewTransitionTimer) {
+        clearTimeout(this._viewTransitionTimer);
+        this._viewTransitionTimer = null;
+      }
       // Remove hidden first to make container visible (even if opacity is 0)
       this._viewContainerEl.classList.remove('hidden');
       // Force reflow to ensure background is rendered
@@ -1818,18 +1875,33 @@ class PulsePhotoCard extends HTMLElement {
           this._logToHA('debug', 'view container shown (visible class applied)');
         }
       });
+      const fadeMs = this._config?.fade_ms || 500;
+      this._viewTransitionTimer = setTimeout(() => {
+        this._viewTransitioning = false;
+        this._viewTransitionTimer = null;
+        this._updateNavigationButtons();
+      }, fadeMs);
     }
   }
 
   _hideView() {
     if (this._viewContainerEl) {
+      this._viewTransitioning = true;
+      if (this._viewTransitionTimer) {
+        clearTimeout(this._viewTransitionTimer);
+        this._viewTransitionTimer = null;
+      }
       this._viewContainerEl.classList.remove('visible');
       // Wait for transition to complete before hiding
-      setTimeout(() => {
+      const fadeMs = this._config?.fade_ms || 500;
+      this._viewTransitionTimer = setTimeout(() => {
         if (this._viewContainerEl) {
           this._viewContainerEl.classList.add('hidden');
         }
-      }, this._config.fade_ms || 500);
+        this._viewTransitioning = false;
+        this._viewTransitionTimer = null;
+        this._updateNavigationButtons();
+      }, fadeMs);
     }
   }
 

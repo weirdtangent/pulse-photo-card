@@ -4,15 +4,16 @@
   <img src="https://raw.githubusercontent.com/weirdtangent/pulse-photo-card/main/assets/logo.png" alt="Pulse OS social preview" width="640" />
 </p>
 
-A full-screen photo frame card for Home Assistant with smooth crossfades and clock overlay. Integration with [PulseOS](https://github.com/weirdtangent/pulse-os) adds live overlay, timers, and more.
+A full-screen photo frame card for Home Assistant with smooth crossfades, clock overlay, and optional tap-to-view Lovelace dashboards. Integration with [PulseOS](https://github.com/weirdtangent/pulse-os) adds live overlay, timers, and more.
 
 ## Features
 
 - **Smooth crossfades** - Double-buffered image transitions with no white flash
 - **Clock overlay** - Displays current time and date with automatic locale/timezone support
 - **Now Playing badge** - Optional artist/title ribbon powered by any HA entity including Music Assistant when playing through a full media_player entity
-- **[PulseOS](https://github.com/weirdtangent/pulse-os) overlay embed** - Automatically mirrors the kiosk-hosted overlay (multiple clocks, timers, alarms, notification bar, buttons) and falls back to the built-in clock if unreachable
+- **Tap-to-view dashboards** - Configure Lovelace views in YAML and tap the photo to browse them with built-in navigation and auto-return
 - **Responsive design** - Adapts to any (full) screen size with responsive typography (best when the dashboard is also using HACS kiosk_mode)
+- **[PulseOS](https://github.com/weirdtangent/pulse-os) overlay embed** - Automatically mirrors the kiosk-hosted overlay (multiple clocks, timers, alarms, notification bar, buttons) and falls back to the built-in clock if unreachable
 
 ## Preview
 

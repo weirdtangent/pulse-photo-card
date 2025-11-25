@@ -2,7 +2,7 @@
 
 ![Pulse Photo Card Logo](https://raw.githubusercontent.com/weirdtangent/pulse-photo-card/main/assets/logo.png)
 
-A full-screen photo frame card for Home Assistant with smooth crossfades and clock overlay. Integration with Pulse-OS adds live overlay, timers, and more.
+A full-screen photo frame card for Home Assistant with smooth crossfades, clock overlay, and optional tap-to-view Lovelace dashboards. Integration with Pulse-OS adds live overlay, timers, and more.
 
 ## Features
 
@@ -11,6 +11,7 @@ A full-screen photo frame card for Home Assistant with smooth crossfades and clo
 - **Now Playing badge** - Optional artist/title ribbon powered by any HA entity
 - **Media source support** - Works with Home Assistant's media browser and signed URLs
 - **PulseOS overlay embed** - Mirrors the kiosk-hosted overlay HTML (multiple clocks, timers, alarms, notification bar) with automatic fallback to the built-in clock
+- **Tap-to-view dashboards** - Load Lovelace view configs right in the card by tapping the photo, complete with nav buttons and auto-return
 - **Responsive design** - Adapts to any screen size with responsive typography
 
 ## Installation
