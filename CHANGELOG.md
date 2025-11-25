@@ -1,3 +1,10 @@
+## [0.19.7](https://github.com/weirdtangent/pulse-photo-card/compare/v0.19.6...v0.19.7) (2025-11-25)
+
+
+### Bug Fixes
+
+* more chances at logging what swallows clicks ([bf14fab](https://github.com/weirdtangent/pulse-photo-card/commit/bf14fab3e3adb9c5773e8355e9bf53ff0a90df48))
+
 ## [0.19.6](https://github.com/weirdtangent/pulse-photo-card/compare/v0.19.5...v0.19.6) (2025-11-25)
 
 
