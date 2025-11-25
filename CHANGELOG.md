@@ -1,3 +1,10 @@
+## [0.19.3](https://github.com/weirdtangent/pulse-photo-card/compare/v0.19.2...v0.19.3) (2025-11-25)
+
+
+### Bug Fixes
+
+* enable tap handler even if not in fullscreen mode (mostly for testing) ([28c44d9](https://github.com/weirdtangent/pulse-photo-card/commit/28c44d9b5a1b41b3c81439302c8705be4b6cdd10))
+
 ## [0.19.2](https://github.com/weirdtangent/pulse-photo-card/compare/v0.19.1...v0.19.2) (2025-11-25)
 
 
