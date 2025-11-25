@@ -1233,6 +1233,25 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
     return matchingIndex >= 0 ? matchingIndex + 1 : null;
   }
 
+  function describeTarget(node) {
+    if (!node) {
+      return 'none';
+    }
+    const parts = [];
+    if (node.tagName) {
+      parts.push(node.tagName.toLowerCase());
+    }
+    if (node.id) {
+      parts.push(`#${node.id}`);
+    }
+    if (node.classList && node.classList.length > 0) {
+      parts.push(Array.from(node.classList)
+        .map((className) => `.${className}`)
+        .join(''));
+    }
+    return parts.join('') || 'anonymous';
+  }
+
   function setupGlobalTapHandler(homePath, secondaryUrls, globalTapMode = 'auto') {
     const configKey = `pulse-photo-card-config-${homePath}`;
 
@@ -1262,11 +1281,6 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
     localStorage.setItem(configKey, JSON.stringify({ homePath, secondaryUrls, globalTapMode }));
 
     globalTapHandler = function(e) {
-      // Double-check we're allowed to handle taps (in case mode changed)
-      if (!shouldEnableGlobalTap(globalTapMode)) {
-        return;
-      }
-
       const config = loadStoredTapConfig();
 
       if (!config || !config.secondaryUrls || config.secondaryUrls.length === 0) {
@@ -1276,14 +1290,27 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
       const { homePath: configHomePath, secondaryUrls, globalTapMode: configTapMode } = config;
       const effectiveMode = configTapMode || globalTapMode || 'auto';
 
+      // Double-check we're allowed to handle taps (in case mode changed)
+      if (!shouldEnableGlobalTap(effectiveMode)) {
+        logGlobalTap("global tap skip: mode disabled mid-flight", { mode: effectiveMode });
+        return;
+      }
+
       // Skip tap handling if disable_km parameter is present (used for editing)
       const urlParams = new URLSearchParams(window.location.search);
       if (urlParams.has('disable_km')) {
+        logGlobalTap("global tap skip: disable_km flag present", { mode: effectiveMode });
         return;
       }
 
       // Only handle taps on the main content area, not on interactive elements
       const target = e.target;
+      logGlobalTap("global tap candidate", {
+        target: describeTarget(target),
+        mode: effectiveMode,
+        path: window.location.pathname,
+      });
+
       if (target.tagName === 'A' ||
           target.tagName === 'BUTTON' ||
           target.tagName === 'INPUT' ||
@@ -1295,14 +1322,25 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
           target.closest('a') ||
           target.closest('button') ||
           target.closest('[role="button"]')) {
+        logGlobalTap("global tap skip: interactive element", {
+          target: describeTarget(target),
+        });
         return;
       }
 
       if (effectiveMode !== 'always') {
-        if (target.closest('ha-card[tabindex]')) {
+        const tabbableCard = target.closest('ha-card[tabindex]');
+        if (tabbableCard) {
+          logGlobalTap("global tap skip: tabbable ha-card", {
+            target: describeTarget(tabbableCard),
+          });
           return;
         }
-        if (target.closest('hui-card') && target.closest('hui-card').config?.tap_action) {
+        const actionableCard = target.closest('hui-card');
+        if (actionableCard && actionableCard.config?.tap_action) {
+          logGlobalTap("global tap skip: hui-card tap_action present", {
+            target: describeTarget(actionableCard),
+          });
           return;
         }
       }
@@ -1322,6 +1360,10 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
       } else if (currentIndex > 0) {
         // Stored index suggests we're on a secondary URL, but path doesn't match
         // This might be a stale state, so don't handle
+        logGlobalTap("global tap skip: state mismatch", {
+          target: describeTarget(target),
+          storedIndex: currentIndex,
+        });
         return;
       }
 
