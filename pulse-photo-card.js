@@ -1294,18 +1294,17 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
           target.closest('paper-button') ||
           target.closest('a') ||
           target.closest('button') ||
-          target.closest('[role="button"]') ||
-          target.closest('ha-card[tabindex]')) {
+          target.closest('[role="button"]')) {
         return;
       }
 
-      // Skip if clicking on cards that have their own tap actions
-      if (
-        effectiveMode !== 'always' &&
-        target.closest('hui-card') &&
-        target.closest('hui-card').config?.tap_action
-      ) {
-        return;
+      if (effectiveMode !== 'always') {
+        if (target.closest('ha-card[tabindex]')) {
+          return;
+        }
+        if (target.closest('hui-card') && target.closest('hui-card').config?.tap_action) {
+          return;
+        }
       }
 
       const storageKey = `pulse-photo-card-url-index-${configHomePath}`;
