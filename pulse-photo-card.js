@@ -1099,6 +1099,28 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
   'use strict';
 
   let globalTapHandler = null;
+  const TAP_EVENT_TYPES = (typeof window !== 'undefined' && window.PointerEvent)
+    ? ['pointerup']
+    : ['click'];
+  const TAP_EVENT_TARGETS = typeof window !== 'undefined'
+    ? [window, document]
+    : [document];
+
+  function attachGlobalTapHandler(handler) {
+    TAP_EVENT_TARGETS.forEach((target) => {
+      TAP_EVENT_TYPES.forEach((eventType) => {
+        target.addEventListener(eventType, handler, true);
+      });
+    });
+  }
+
+  function detachGlobalTapHandler(handler) {
+    TAP_EVENT_TARGETS.forEach((target) => {
+      TAP_EVENT_TYPES.forEach((eventType) => {
+        target.removeEventListener(eventType, handler, true);
+      });
+    });
+  }
 
   function logGlobalTap(message, detail) {
     try {
@@ -1257,7 +1279,7 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
 
     if (!shouldEnableGlobalTap(globalTapMode)) {
       if (globalTapHandler) {
-        document.removeEventListener('click', globalTapHandler, true);
+        detachGlobalTapHandler(globalTapHandler);
         globalTapHandler = null;
       }
       localStorage.removeItem(configKey);
@@ -1267,7 +1289,7 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
 
     // Remove existing handler if any
     if (globalTapHandler) {
-      document.removeEventListener('click', globalTapHandler, true);
+      detachGlobalTapHandler(globalTapHandler);
       globalTapHandler = null;
     }
 
@@ -1309,6 +1331,7 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
         target: describeTarget(target),
         mode: effectiveMode,
         path: window.location.pathname,
+        eventType: e.type,
       });
 
       if (target.tagName === 'A' ||
@@ -1387,12 +1410,12 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
         to: normalizePath(targetPath),
         nextIndex: currentIndex,
         mode: effectiveMode,
+        eventType: e.type,
       });
       window.location.href = preserveKioskParams(targetPath);
     };
 
-    // Use capture phase to catch clicks early, but allow other handlers to work
-    document.addEventListener('click', globalTapHandler, true);
+    attachGlobalTapHandler(globalTapHandler);
     logGlobalTap("global tap handler enabled", {
       homePath: normalizePath(homePath),
       mode: globalTapMode || 'auto',
