@@ -1,3 +1,10 @@
+# [0.19.0](https://github.com/weirdtangent/pulse-photo-card/compare/v0.18.8...v0.19.0) (2025-11-25)
+
+
+### Features
+
+* add show_overlay_status option to pulse-photo-card ([97f6041](https://github.com/weirdtangent/pulse-photo-card/commit/97f604139a2d514b072b7600c2ae825a1b758215))
+
 ## [0.18.8](https://github.com/weirdtangent/pulse-photo-card/compare/v0.18.7...v0.18.8) (2025-11-25)
 
 
