@@ -1,3 +1,10 @@
+# [0.20.0](https://github.com/weirdtangent/pulse-photo-card/compare/v0.19.11...v0.20.0) (2025-11-25)
+
+
+### Features
+
+* Add configurable tap-to-view dashboards ([9c6f724](https://github.com/weirdtangent/pulse-photo-card/commit/9c6f72449a02cfff5cdd9a300d29dfaae7d629e0))
+
 ## [0.19.11](https://github.com/weirdtangent/pulse-photo-card/compare/v0.19.10...v0.19.11) (2025-11-25)
 
 
