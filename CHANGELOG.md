@@ -1,3 +1,10 @@
+## [0.18.8](https://github.com/weirdtangent/pulse-photo-card/compare/v0.18.7...v0.18.8) (2025-11-25)
+
+
+### Bug Fixes
+
+* legacy mode: make sure notification bar stays visible ([3715a45](https://github.com/weirdtangent/pulse-photo-card/commit/3715a455884f4dd893fcb3b47c9fd0c25ccbcbb5))
+
 ## [0.18.7](https://github.com/weirdtangent/pulse-photo-card/compare/v0.18.6...v0.18.7) (2025-11-24)
 
 
