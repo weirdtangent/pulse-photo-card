@@ -1,3 +1,11 @@
+## [0.19.1](https://github.com/weirdtangent/pulse-photo-card/compare/v0.19.0...v0.19.1) (2025-11-25)
+
+
+### Bug Fixes
+
+* make sure the cycle continues forever ([3bc734b](https://github.com/weirdtangent/pulse-photo-card/commit/3bc734ba36b1ad8ed870f098c59a8902579cb29f))
+* make tap cycling start to work ([f14560d](https://github.com/weirdtangent/pulse-photo-card/commit/f14560d55480c238fe19ab442ee72dd28141a4cf))
+
 # [0.19.0](https://github.com/weirdtangent/pulse-photo-card/compare/v0.18.8...v0.19.0) (2025-11-25)
 
 
