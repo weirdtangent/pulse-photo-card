@@ -117,7 +117,7 @@ Running a shared dashboard across multiple kiosks? Set `now_playing_entity: auto
 
 ## [PulseOS](https://github.com/weirdtangent/pulse-os) integration (optional)
 
-Pairing this card with [PulseOS](https://github.com/weirdtangent/pulse-os) turns it into a fully synced kiosk sidecar: you still get the
+[PulseOS](https://github.com/weirdtangent/pulse-os) is aimed at makers building a desktop kiosk or assistant with a Pi 5 and Pi Touch 7" Display. Pairing this card with [PulseOS](https://github.com/weirdtangent/pulse-os) turns it into a fully synced kiosk sidecar: you still get the
 standalone slideshow above, plus live overlay HTML, timers, alarms, notification badges, and
 button hooks that match what [PulseOS](https://github.com/weirdtangent/pulse-os) is already showing. If you don’t run [PulseOS](https://github.com/weirdtangent/pulse-os), you can
 skip this section and keep using the card as-is.
