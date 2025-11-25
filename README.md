@@ -11,7 +11,7 @@ A full-screen photo frame card for Home Assistant with smooth crossfades and clo
 - **Smooth crossfades** - Double-buffered image transitions with no white flash
 - **Clock overlay** - Displays current time and date with automatic locale/timezone support
 - **Now Playing badge** - Optional artist/title ribbon powered by any HA entity including Music Assistant when playing through a full media_player entity
-- **[PulseOS](https://github.com/weirdtangent/pulse-os) overlay embed** - Automatically mirrors the kiosk-hosted overlay (multiple clocks, timers, alarms, notification bar, buttons) and falls back to the built-in clock if unreachable. Also allows tap-to-cycle through multiple dashboards (perfect for kiosks)
+- **[PulseOS](https://github.com/weirdtangent/pulse-os) overlay embed** - Automatically mirrors the kiosk-hosted overlay (multiple clocks, timers, alarms, notification bar, buttons) and falls back to the built-in clock if unreachable
 - **Responsive design** - Adapts to any (full) screen size with responsive typography (best when the dashboard is also using HACS kiosk_mode)
 
 ## Preview
@@ -101,9 +101,7 @@ views:
         entity: sensor.pulse_current_photo_url
         fade_ms: 2000              # optional, default 1000
         now_playing_entity: auto   # optional; follows sensor.<pulse_host>_now_playing
-        show_overlay_status: true  # optional; set to false to hdie the notification bar
-        secondary_urls:            # optional; set to let a click/tap take you somewhere
-          - /net-dev-1-hour
+        show_overlay_status: true  # optional; set to false to hide the notification bar
 ```
 
 Point `now_playing_entity` at any Home Assistant entity that exposes `media_title` / `media_artist` attributes (for example, Music Assistant or Snapcast `media_player` entities). You can also supply a sensor that already formats the text (the badge will show the sensor state whenever it isn't `unknown`/`unavailable`). Leave the option out entirely if you don't want a Now Playing pill.
@@ -188,12 +186,6 @@ views:
         overlay_refresh_entity: auto
 
         now_playing_entity: auto
-
-        secondary_urls:
-
-          - /pulse-house
-
-          - /pulse-security
 ```
 
 Point `PULSE_URL` at the kiosk view (e.g., `http://homeassistant.local:8123/pulse-home?sidebar=hide`). [PulseOS](https://github.com/weirdtangent/pulse-os) already adds `?pulse_host=<hostname>` when launching dashboards, so each kiosk keeps its own overlay and Now Playing badge. Append `?disable_km` to the URL while configuring if you need to expose the Lovelace edit/UI buttons again.
@@ -205,8 +197,6 @@ Point `PULSE_URL` at the kiosk view (e.g., `http://homeassistant.local:8123/puls
 | `fade_ms` | number | `1000` | Cross-fade transition duration in milliseconds |
 | `now_playing_entity` | string | `null` | Optional `media_player`/sensor entity for the badge. Set to `"auto"` to follow `sensor.<pulse_host>_now_playing`. |
 | `now_playing_label` | string | `"Now Playing"` | Overrides the label shown above the track text |
-| `secondary_urls` | array | `[]` | Array of navigation paths to cycle through on tap |
-| `global_tap_mode` | string | `"auto"` | Controls when the global tap handler attaches. Use `"auto"` (default) for kiosk-only detection, `"always"` to force it on every dashboard (legacy mode, desktop testing), or `"never"` to disable the global handler entirely. |
 | `overlay_enabled` | bool | auto | Set to `false` to force the legacy overlay even if a kiosk overlay is available. Defaults to `true` when `overlay_url` resolves. |
 | `overlay_url` | string | `http://<pulse_host>:8800/overlay` | URL of the [PulseOS](https://github.com/weirdtangent/pulse-os) overlay endpoint. Leave unset to auto-detect via `?pulse_host` (the card auto-appends `.local` when the hostname lacks a domain). |
 | `overlay_refresh_entity` | string | `auto` | Optional HA entity (e.g., MQTT sensor) whose state changes when the kiosk publishes overlay refresh hints. Leave unset/`"auto"` to follow `sensor.<pulse_host>_overlay_refresh`; set a custom entity if you use a different naming pattern. |
@@ -233,16 +223,6 @@ Recommended setup:
 3. Optionally tighten `overlay_poll_seconds` (default 120) if you want a quicker safety refresh.
 
 If the overlay endpoint can't be reached, the card automatically falls back to its legacy overlay so users still see the time.
-
-### Navigation Cycling
-
-When `secondary_urls` is configured, tapping anywhere on **any dashboard** (not just the photo frame) cycles through these URLs and back to the home screen. Each tap advances to the next URL in the array, wrapping back to home after the last one.
-
-**Note:** The global tap handler intelligently skips interactive elements (buttons, links, inputs, etc.) so it won't interfere with normal dashboard interactions. It only handles taps on empty areas of the dashboard.
-
-Set `global_tap_mode: always` if you want the same tap-cycling behavior while editing dashboards or when running the card outside the Pulse kiosk (legacy mode). Use `global_tap_mode: never` to temporarily disable the global handler without removing your `secondary_urls`.
-
-This feature is particularly useful for kiosk displays where you want simple tap navigation between multiple dashboards.
 
 ## Troubleshooting
 
