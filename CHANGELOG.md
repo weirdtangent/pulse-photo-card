@@ -1,3 +1,10 @@
+## [0.19.10](https://github.com/weirdtangent/pulse-photo-card/compare/v0.19.9...v0.19.10) (2025-11-25)
+
+
+### Bug Fixes
+
+* the obvious fix, make the bg transparent ([ea28d6e](https://github.com/weirdtangent/pulse-photo-card/commit/ea28d6e4192284e024b0e4b55367371799d972ac))
+
 ## [0.19.9](https://github.com/weirdtangent/pulse-photo-card/compare/v0.19.8...v0.19.9) (2025-11-25)
 
 
