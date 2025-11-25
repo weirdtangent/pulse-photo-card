@@ -1,3 +1,10 @@
+## [0.19.8](https://github.com/weirdtangent/pulse-photo-card/compare/v0.19.7...v0.19.8) (2025-11-25)
+
+
+### Bug Fixes
+
+* nuke-it-from-orbit logging as a last chance to make this work or unsderstand it ([5605070](https://github.com/weirdtangent/pulse-photo-card/commit/560507061c40aa425c1e574bd13285ebe3e511ae))
+
 ## [0.19.7](https://github.com/weirdtangent/pulse-photo-card/compare/v0.19.6...v0.19.7) (2025-11-25)
 
 
