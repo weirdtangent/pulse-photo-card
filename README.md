@@ -215,6 +215,7 @@ Point `PULSE_URL` at the kiosk view (e.g., `http://homeassistant.local:8123/puls
 | `overlay_url` | string | `http://<pulse_host>:8800/overlay` | URL of the [PulseOS](https://github.com/weirdtangent/pulse-os) overlay endpoint. Leave unset to auto-detect via `?pulse_host` (the card auto-appends `.local` when the hostname lacks a domain). |
 | `overlay_refresh_entity` | string | `auto` | Optional HA entity (e.g., MQTT sensor) whose state changes when the kiosk publishes overlay refresh hints. Leave unset/`"auto"` to follow `sensor.<pulse_host>_overlay_refresh`; set a custom entity if you use a different naming pattern. |
 | `overlay_poll_seconds` | number | `120` | Fallback refresh cadence (seconds) if no refresh entity is configured or events are missed. Set to `0` to disable polling entirely. |
+| `show_overlay_status` | bool | `true` | Set to `false` to hide the Pulse/legacy overlay status pill (useful when you always run in legacy mode). |
 
 ### Overlay endpoint integration
 

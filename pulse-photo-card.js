@@ -43,6 +43,7 @@ class PulsePhotoCard extends HTMLElement {
       overlay_url: undefined,
       overlay_refresh_entity: undefined,
       overlay_poll_seconds: 120,
+      show_overlay_status: true,
       ...config,
     };
 
@@ -75,6 +76,15 @@ class PulsePhotoCard extends HTMLElement {
                 <div class="now-playing__text"></div>
               </div>
             `
+      : '';
+
+    const overlayStatusMarkup = this._config.show_overlay_status
+      ? `
+        <div class="overlay-status">
+          <span class="overlay-status__emoji" aria-hidden="true">🕒</span>
+          <span class="overlay-status__text">Legacy overlay</span>
+        </div>
+      `
       : '';
 
     const remoteOverlayMarkup = this._overlayEnabled
@@ -277,10 +287,7 @@ class PulsePhotoCard extends HTMLElement {
           <img class="layer layer-a visible" />
           <img class="layer layer-b" />
         </div>
-        <div class="overlay-status">
-          <span class="overlay-status__emoji" aria-hidden="true">🕒</span>
-          <span class="overlay-status__text">Legacy overlay</span>
-        </div>
+        ${overlayStatusMarkup}
         ${remoteOverlayMarkup}
         <div class="overlay overlay--legacy">
           <div class="overlay__content">
