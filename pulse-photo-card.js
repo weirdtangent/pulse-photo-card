@@ -95,7 +95,7 @@ class PulsePhotoCard extends HTMLElement {
           height: 100vh;
           width: 100vw;
           margin: 0;
-          background: #000;
+          background: transparent;
         }
 
         ha-card {
