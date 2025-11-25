@@ -144,6 +144,7 @@ class PulsePhotoCard extends HTMLElement {
           color: #fff;
           pointer-events: none;
           box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+          z-index: 3;
         }
 
         .overlay-status.hidden {
