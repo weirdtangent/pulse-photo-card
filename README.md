@@ -108,6 +108,86 @@ Point `now_playing_entity` at any Home Assistant entity that exposes `media_titl
 
 Running a shared dashboard across multiple kiosks? Set `now_playing_entity: auto` and make sure each Pulse device appends `?pulse_host=<hostname>` ([PulseOS](https://github.com/weirdtangent/pulse-os) adds this automatically, see below). The card will look up `sensor.<pulse_host>_now_playing`, so every kiosk shows its own track without duplicating Lovelace YAML.
 
+### 3. (Optional) Add Tap-to-View Dashboards
+
+The card can switch from the photo screen into full Lovelace dashboards (“views”) whenever you tap the screen. Tap anywhere on the photo to jump to the first view, then use the navigation buttons in the nav bar (previous / home / next) to cycle through views or return to the photo. You can still tap an empty area in the view to return if there’s blank space, but the nav buttons are the primary control. An auto-return timer (`view_timeout_seconds`, default 180 s) snaps back to the photo automatically to prevent burn-in.
+
+Design your dashboards in a normal HA view (sections/grid) and copy the YAML into the `views:` array. Once views are configured, the card renders them beneath the nav bar using Lovelace’s own card helpers—individual cards keep their styling, but the surrounding layout (column counts, grid spacing, stack widths) can still shift a bit because the kiosk view imposes different max widths and padding. If you absolutely need HA’s native renderer you can experiment with `experimental_native_views: true`, but that option remains unstable in kiosk setups (missing resources can still break rendering).
+
+Example:
+
+```yaml
+type: custom:pulse-photo-card
+entity: sensor.pulse_current_photo_url
+fade_ms: 2000
+view_timeout_seconds: 240
+views:
+  - type: sections
+    path: home-summary
+    title: Home Summary
+    max_columns: 2
+    sections:
+      - type: grid
+        cards:
+          - type: horizontal-stack
+            cards:
+              - type: weather-forecast
+                entity: weather.forecast_home_2
+              - type: custom:mini-graph-card
+                name: WAN Internet Traffic (6h)
+                entities:
+                  - sensor.uni_gateway_max_house_network_rx
+                  - sensor.uni_gateway_max_house_network_tx
+          - type: horizontal-stack
+            cards:
+              - type: custom:mini-graph-card
+                name: House Temperature (72h)
+                entities:
+                  - sensor.house_temperature
+              - type: custom:mini-graph-card
+                name: House Humidity (72h)
+                entities:
+                  - sensor.house_humidity
+  - type: sections
+    title: Current
+    max_columns: 3
+    sections:
+      - type: grid
+        cards:
+          - type: vertical-stack
+            cards:
+              - type: custom:mushroom-title-card
+                title: 🛰️ Network Dashboard
+                subtitle: Status & Device Health
+              - type: markdown
+                content: |
+                  {% set updates = states
+                     | selectattr('entity_id','search','update\\.')
+                     | selectattr('state','eq','on')
+                     | map(attribute='name') | list %}
+                  {% if updates %}
+                  **Available updates:**
+                  {% for item in updates %}
+                  - {{ item }}
+                  {% endfor %}
+                  {% else %}
+                  ✅ All up to date!
+                  {% endif %}
+          - type: vertical-stack
+            cards:
+              - type: custom:mushroom-title-card
+                title: 🚨 Alerts & Health
+              - type: conditional
+                conditions:
+                  - entity: update.home_assistant_core_update
+                    state_not: "off"
+                card:
+                  type: custom:mushroom-entity-card
+                  entity: update.home_assistant_core_update
+```
+
+Because the card re-renders these views internally, layouts stay consistent even in kiosk mode. If you absolutely need HA’s own renderer you can experiment with `experimental_native_views: true`, but that path remains experimental because some custom-card resources don’t load cleanly outside Lovelace.
+
 ## [PulseOS](https://github.com/weirdtangent/pulse-os) integration (optional)
 
 [PulseOS](https://github.com/weirdtangent/pulse-os) is aimed at makers building a desktop kiosk or assistant with a Pi 5 and Pi Touch 7" Display. Pairing this card with [PulseOS](https://github.com/weirdtangent/pulse-os) turns it into a fully synced kiosk sidecar: you still get the
@@ -202,6 +282,9 @@ Point `PULSE_URL` at the kiosk view (e.g., `http://homeassistant.local:8123/puls
 | `overlay_refresh_entity` | string | `auto` | Optional HA entity (e.g., MQTT sensor) whose state changes when the kiosk publishes overlay refresh hints. Leave unset/`"auto"` to follow `sensor.<pulse_host>_overlay_refresh`; set a custom entity if you use a different naming pattern. |
 | `overlay_poll_seconds` | number | `120` | Fallback refresh cadence (seconds) if no refresh entity is configured or events are missed. Set to `0` to disable polling entirely. |
 | `show_overlay_status` | bool | `true` | Set to `false` to hide the Pulse/legacy overlay status pill (useful when you always run in legacy mode). |
+| `views` | array | `[]` | Optional Lovelace view definitions that the card can cycle through on tap. Copy/paste the YAML from any `sections`/`grid`/`cards` dashboard. |
+| `view_timeout_seconds` | number | `180` | How long to keep a view on screen before automatically returning to the photo. |
+| `debug` | bool | `false` | Set to `true` to enable verbose console logging. Useful when troubleshooting; otherwise the card only logs warnings/errors. |
 
 ### Overlay endpoint integration
 

@@ -65,6 +65,13 @@ Set `now_playing_entity: auto` and include `?pulse_host=<hostname>` in the kiosk
 | `overlay_url` | string | `http://<pulse_host>:8800/overlay` | PulseOS overlay endpoint URL. Leave blank to auto-detect via `?pulse_host` (a `.local` suffix is added when the hostname has no domain). |
 | `overlay_refresh_entity` | string | `auto` | HA entity whose state changes when the kiosk publishes `pulse/<host>/overlay/refresh`. Leave unset/`"auto"` to follow `sensor.<pulse_host>_overlay_refresh`. |
 | `overlay_poll_seconds` | number | `120` | Backup refresh cadence (seconds). Set `0` to disable polling. |
+| `views` | array | `[]` | Optional Lovelace view definitions (sections/grid/cards) that the card can cycle through when tapped. |
+| `view_timeout_seconds` | number | `180` | How long to keep a view open before automatically returning to the photo. |
+| `debug` | bool | `false` | Enable verbose console logging (suppressed by default). |
+
+### Tap-to-view dashboards
+
+Add one or more Lovelace views under the `views:` key to let the card behave like a miniature dashboard browser. Tap anywhere on the photo to open the first view, then use the nav buttons (previous / home / next) in the notification bar to move through the configured views or jump back to the photo. The card automatically returns to the photo after `view_timeout_seconds` (default 180 s). You can design these dashboards in a normal Lovelace editor and then copy/paste the YAML directly into the `views` array.
 
 ## Related Projects
 
