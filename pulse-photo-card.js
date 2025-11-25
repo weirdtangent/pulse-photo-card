@@ -1143,6 +1143,38 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
     return isPulseDevice();
   }
 
+  function loadStoredTapConfig() {
+    const keys = Object.keys(localStorage);
+    for (const key of keys) {
+      if (!key.startsWith('pulse-photo-card-config-')) {
+        continue;
+      }
+      try {
+        const configStr = localStorage.getItem(key);
+        if (!configStr) {
+          continue;
+        }
+        const config = JSON.parse(configStr);
+        if (config?.secondaryUrls && config.secondaryUrls.length > 0) {
+          return config;
+        }
+      } catch (err) {
+        // Drop invalid config and continue scanning
+        localStorage.removeItem(key);
+      }
+    }
+    return null;
+  }
+
+  function cleanupStoredTapConfig() {
+    const keys = Object.keys(localStorage);
+    for (const key of keys) {
+      if (key.startsWith('pulse-photo-card-config-') || key.startsWith('pulse-photo-card-url-index-')) {
+        localStorage.removeItem(key);
+      }
+    }
+  }
+
   // Shared utility functions
   function normalizePath(path) {
     if (!path) {
@@ -1235,25 +1267,7 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
         return;
       }
 
-      // Load config from localStorage
-      const keys = Object.keys(localStorage);
-      let config = null;
-      for (const key of keys) {
-        if (key.startsWith('pulse-photo-card-config-')) {
-          try {
-            const configStr = localStorage.getItem(key);
-            if (configStr) {
-              const candidate = JSON.parse(configStr);
-              if (candidate.secondaryUrls && candidate.secondaryUrls.length > 0) {
-                config = candidate;
-                break;
-              }
-            }
-          } catch (err) {
-            // Invalid config, continue
-          }
-        }
-      }
+      const config = loadStoredTapConfig();
 
       if (!config || !config.secondaryUrls || config.secondaryUrls.length === 0) {
         return;
@@ -1341,42 +1355,24 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
 
   // Initialize on page load if we're in cycling mode
   function initializeOnLoad() {
-    // Only initialize on Pulse devices
-    if (!isPulseDevice()) {
-      // Clean up any leftover config from desktop testing
-      const keys = Object.keys(localStorage);
-      for (const key of keys) {
-        if (key.startsWith('pulse-photo-card-config-') ||
-            key.startsWith('pulse-photo-card-url-index-')) {
-          localStorage.removeItem(key);
-        }
+    const config = loadStoredTapConfig();
+    if (!config) {
+      if (!isPulseDevice()) {
+        cleanupStoredTapConfig();
       }
       return;
     }
 
-    // Check if we have any stored config indicating we're in cycling mode
-    // Look for localStorage keys that match the pattern
-    const keys = Object.keys(localStorage);
-    for (const key of keys) {
-      if (key.startsWith('pulse-photo-card-config-')) {
-        try {
-          const configStr = localStorage.getItem(key);
-          if (!configStr) continue;
-
-          const config = JSON.parse(configStr);
-          const { homePath, secondaryUrls } = config;
-
-          if (secondaryUrls && secondaryUrls.length > 0) {
-            // Set up the global handler with stored config
-            setupGlobalTapHandler(homePath, secondaryUrls, globalTapMode || 'auto');
-            break;
-          }
-        } catch (e) {
-          // Invalid config, skip
-          console.warn('pulse-photo-card: invalid stored config', e);
-        }
+    const { homePath, secondaryUrls, globalTapMode } = config;
+    const tapMode = globalTapMode || 'auto';
+    if (!shouldEnableGlobalTap(tapMode)) {
+      if (tapMode === 'auto' && !isPulseDevice()) {
+        cleanupStoredTapConfig();
       }
+      return;
     }
+
+    setupGlobalTapHandler(homePath, secondaryUrls, tapMode);
   }
 
   // Run initialization when DOM is ready
