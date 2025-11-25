@@ -1,3 +1,10 @@
+## [0.19.5](https://github.com/weirdtangent/pulse-photo-card/compare/v0.19.4...v0.19.5) (2025-11-25)
+
+
+### Bug Fixes
+
+* avoiding more complications, all to get tap navigation working ([1524000](https://github.com/weirdtangent/pulse-photo-card/commit/1524000ef0ace9c4233e02dc7782f72ee6647ef7))
+
 ## [0.19.4](https://github.com/weirdtangent/pulse-photo-card/compare/v0.19.3...v0.19.4) (2025-11-25)
 
 
