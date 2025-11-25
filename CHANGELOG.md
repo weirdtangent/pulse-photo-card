@@ -1,3 +1,10 @@
+## [0.19.6](https://github.com/weirdtangent/pulse-photo-card/compare/v0.19.5...v0.19.6) (2025-11-25)
+
+
+### Bug Fixes
+
+* logging to see where this is failing ([ea804cf](https://github.com/weirdtangent/pulse-photo-card/commit/ea804cf034c52d39c2be10d08c22b0f356fa558c))
+
 ## [0.19.5](https://github.com/weirdtangent/pulse-photo-card/compare/v0.19.4...v0.19.5) (2025-11-25)
 
 
