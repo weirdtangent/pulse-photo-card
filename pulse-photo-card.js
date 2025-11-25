@@ -55,6 +55,7 @@ class PulsePhotoCard extends HTMLElement {
       secondary_urls: [],
       now_playing_entity: null,
       now_playing_label: 'Now Playing',
+      global_tap_mode: 'auto',
       overlay_enabled: undefined,
       overlay_url: undefined,
       overlay_refresh_entity: undefined,
@@ -62,6 +63,8 @@ class PulsePhotoCard extends HTMLElement {
       show_overlay_status: true,
       ...config,
     };
+
+    this._config.global_tap_mode = this._sanitizeTapMode(this._config.global_tap_mode);
 
     if (typeof this._config.now_playing_entity === 'string') {
       const trimmed = this._config.now_playing_entity.trim();
@@ -342,11 +345,15 @@ class PulsePhotoCard extends HTMLElement {
     // Set up tap handler if secondary URLs are configured
     if (this._config.secondary_urls.length > 0) {
       // Set up local tap handler for the card itself
-      this._card.addEventListener('click', (e) => this._handleTap(e));
+      this._card.addEventListener('click', (e) => this._handleTap(e, 'card'));
 
       // Also set up global tap handler that works on any dashboard
       if (window.PulsePhotoCardGlobalTap && window.PulsePhotoCardGlobalTap.setup) {
-        window.PulsePhotoCardGlobalTap.setup(this._homePath, this._config.secondary_urls);
+        window.PulsePhotoCardGlobalTap.setup(
+          this._homePath,
+          this._config.secondary_urls,
+          this._config.global_tap_mode,
+        );
       }
 
       // Initialize the current index based on the current URL
@@ -671,6 +678,17 @@ class PulsePhotoCard extends HTMLElement {
     return null;
   }
 
+  _sanitizeTapMode(mode) {
+    if (!mode) {
+      return 'auto';
+    }
+    const normalized = String(mode).trim().toLowerCase();
+    if (normalized === 'always' || normalized === 'never' || normalized === 'auto') {
+      return normalized;
+    }
+    return 'auto';
+  }
+
   _autoOverlayRefreshEntity() {
     const pulseHost = this._extractPulseHostFromQuery();
     if (!pulseHost) {
@@ -935,7 +953,7 @@ class PulsePhotoCard extends HTMLElement {
     }
   }
 
-  _handleTap(e) {
+  _handleTap(e, trigger = 'card') {
     if (!this._config.secondary_urls || this._config.secondary_urls.length === 0) {
       return;
     }
@@ -951,22 +969,52 @@ class PulsePhotoCard extends HTMLElement {
 
     // Get current index from localStorage, default to 0 (home screen)
     let currentIndex = parseInt(localStorage.getItem(storageKey) || '0', 10);
+    const previousIndex = currentIndex;
 
     // Increment index and wrap around (0 = home, 1+ = secondary URLs)
     currentIndex = (currentIndex + 1) % (this._config.secondary_urls.length + 1);
 
     // Navigate based on index
-    if (currentIndex === 0) {
-      // Navigate back to home
-      this._navigateToPath(this._homePath);
-    } else {
-      // Navigate to secondary URL (index - 1 because 0 is home)
-      const targetUrl = this._config.secondary_urls[currentIndex - 1];
-      this._navigateToPath(targetUrl);
-    }
+    const targetPath = currentIndex === 0 ? this._homePath : this._config.secondary_urls[currentIndex - 1];
+    this._logTapNavigation({
+      trigger,
+      fromPath: window.location.pathname,
+      targetPath,
+      previousIndex,
+      nextIndex: currentIndex,
+      storageKey,
+    });
+    this._navigateToPath(targetPath);
 
     // Store the new index
     localStorage.setItem(storageKey, currentIndex.toString());
+  }
+
+  _logTapNavigation({ trigger, fromPath, targetPath, previousIndex, nextIndex, storageKey }) {
+    const normalizedFrom = this._normalizePath(fromPath || window.location.pathname);
+    const normalizedTarget = this._normalizePath(targetPath);
+    const messageParts = [
+      `tap navigation`,
+      `trigger=${trigger || 'unknown'}`,
+      `from=${normalizedFrom}`,
+      `to=${normalizedTarget}`,
+    ];
+    if (Number.isFinite(previousIndex)) {
+      messageParts.push(`previousIndex=${previousIndex}`);
+    }
+    if (Number.isFinite(nextIndex)) {
+      messageParts.push(`nextIndex=${nextIndex}`);
+    }
+    if (storageKey) {
+      messageParts.push(`storageKey=${storageKey}`);
+    }
+    const message = messageParts.join(' ');
+    try {
+      console.info("pulse-photo-card: " + message);
+    } catch (consoleError) {
+      // Ignore console failures (e.g., console disabled)
+    }
+    this._logToHA('info', message);
   }
 
   _handleOverlayMessage(event) {
@@ -987,7 +1035,7 @@ class PulsePhotoCard extends HTMLElement {
       return;
     }
 
-    this._handleTap();
+    this._handleTap(undefined, 'overlay-message');
   }
 
   _normalizePath(path) {
@@ -1052,15 +1100,20 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
 
   let globalTapHandler = null;
 
-  // Detect if we're running on a Pulse device (kiosk mode)
-  // Only enable global tap handler on Pulse, not on desktop browsers
-  function isPulseDevice() {
-    // Check for explicit disable flag in URL
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.has('pulse_tap_disable')) {
-      return false;
+  function logGlobalTap(message, detail) {
+    try {
+      if (detail) {
+        console.info("pulse-photo-card: " + message, detail);
+      } else {
+        console.info("pulse-photo-card: " + message);
+      }
+    } catch (err) {
+      // Ignore console logging failures
     }
+  }
 
+  // Detect if we're running on a Pulse device (kiosk mode)
+  function isPulseDevice() {
     // Check if we're in fullscreen/kiosk mode
     // Pulse runs Chromium with --kiosk flag, which puts it in fullscreen
     const isFullscreen = window.innerHeight === screen.height &&
@@ -1074,6 +1127,20 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
                           window.screen.availHeight === window.innerHeight; // Using full screen
 
     return isLikelyKiosk;
+  }
+
+  function shouldEnableGlobalTap(globalTapMode) {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('pulse_tap_disable')) {
+      return false;
+    }
+    if (globalTapMode === 'never') {
+      return false;
+    }
+    if (globalTapMode === 'always') {
+      return true;
+    }
+    return isPulseDevice();
   }
 
   // Shared utility functions
@@ -1134,16 +1201,16 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
     return matchingIndex >= 0 ? matchingIndex + 1 : null;
   }
 
-  function setupGlobalTapHandler(homePath, secondaryUrls) {
-    // Only enable on Pulse devices, not on desktop browsers
-    if (!isPulseDevice()) {
-      // Clear any existing config and handler if we're not on Pulse
+  function setupGlobalTapHandler(homePath, secondaryUrls, globalTapMode = 'auto') {
+    const configKey = `pulse-photo-card-config-${homePath}`;
+
+    if (!shouldEnableGlobalTap(globalTapMode)) {
       if (globalTapHandler) {
         document.removeEventListener('click', globalTapHandler, true);
         globalTapHandler = null;
       }
-      const configKey = `pulse-photo-card-config-${homePath}`;
       localStorage.removeItem(configKey);
+      logGlobalTap("global tap handler disabled", { mode: globalTapMode || 'auto' });
       return;
     }
 
@@ -1155,18 +1222,16 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
 
     if (!secondaryUrls || secondaryUrls.length === 0) {
       // Clear stored config if URLs are removed
-      const configKey = `pulse-photo-card-config-${homePath}`;
       localStorage.removeItem(configKey);
       return;
     }
 
     // Store config in localStorage so it persists across page navigations
-    const configKey = `pulse-photo-card-config-${homePath}`;
-    localStorage.setItem(configKey, JSON.stringify({ homePath, secondaryUrls }));
+    localStorage.setItem(configKey, JSON.stringify({ homePath, secondaryUrls, globalTapMode }));
 
     globalTapHandler = function(e) {
-      // Double-check we're on Pulse device (in case detection changes)
-      if (!isPulseDevice()) {
+      // Double-check we're allowed to handle taps (in case mode changed)
+      if (!shouldEnableGlobalTap(globalTapMode)) {
         return;
       }
 
@@ -1194,7 +1259,7 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
         return;
       }
 
-      const { homePath: configHomePath, secondaryUrls } = config;
+      const { homePath: configHomePath, secondaryUrls, globalTapMode: configTapMode } = config;
 
       // Skip tap handling if disable_km parameter is present (used for editing)
       const urlParams = new URLSearchParams(window.location.search);
@@ -1257,11 +1322,21 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
       localStorage.setItem(storageKey, currentIndex.toString());
 
       // Navigate with preserved kiosk parameters
+      logGlobalTap("global tap navigation", {
+        from: normalizePath(currentPath),
+        to: normalizePath(targetPath),
+        nextIndex: currentIndex,
+        mode: configTapMode || globalTapMode || 'auto',
+      });
       window.location.href = preserveKioskParams(targetPath);
     };
 
     // Use capture phase to catch clicks early, but allow other handlers to work
     document.addEventListener('click', globalTapHandler, true);
+    logGlobalTap("global tap handler enabled", {
+      homePath: normalizePath(homePath),
+      mode: globalTapMode || 'auto',
+    });
   }
 
   // Initialize on page load if we're in cycling mode
@@ -1293,7 +1368,7 @@ customElements.define('pulse-photo-card', PulsePhotoCard);
 
           if (secondaryUrls && secondaryUrls.length > 0) {
             // Set up the global handler with stored config
-            setupGlobalTapHandler(homePath, secondaryUrls);
+            setupGlobalTapHandler(homePath, secondaryUrls, globalTapMode || 'auto');
             break;
           }
         } catch (e) {

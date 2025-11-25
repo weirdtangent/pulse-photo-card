@@ -206,6 +206,7 @@ Point `PULSE_URL` at the kiosk view (e.g., `http://homeassistant.local:8123/puls
 | `now_playing_entity` | string | `null` | Optional `media_player`/sensor entity for the badge. Set to `"auto"` to follow `sensor.<pulse_host>_now_playing`. |
 | `now_playing_label` | string | `"Now Playing"` | Overrides the label shown above the track text |
 | `secondary_urls` | array | `[]` | Array of navigation paths to cycle through on tap |
+| `global_tap_mode` | string | `"auto"` | Controls when the global tap handler attaches. Use `"auto"` (default) for kiosk-only detection, `"always"` to force it on every dashboard (legacy mode, desktop testing), or `"never"` to disable the global handler entirely. |
 | `overlay_enabled` | bool | auto | Set to `false` to force the legacy overlay even if a kiosk overlay is available. Defaults to `true` when `overlay_url` resolves. |
 | `overlay_url` | string | `http://<pulse_host>:8800/overlay` | URL of the [PulseOS](https://github.com/weirdtangent/pulse-os) overlay endpoint. Leave unset to auto-detect via `?pulse_host` (the card auto-appends `.local` when the hostname lacks a domain). |
 | `overlay_refresh_entity` | string | `auto` | Optional HA entity (e.g., MQTT sensor) whose state changes when the kiosk publishes overlay refresh hints. Leave unset/`"auto"` to follow `sensor.<pulse_host>_overlay_refresh`; set a custom entity if you use a different naming pattern. |
@@ -238,6 +239,8 @@ If the overlay endpoint can't be reached, the card automatically falls back to i
 When `secondary_urls` is configured, tapping anywhere on **any dashboard** (not just the photo frame) cycles through these URLs and back to the home screen. Each tap advances to the next URL in the array, wrapping back to home after the last one.
 
 **Note:** The global tap handler intelligently skips interactive elements (buttons, links, inputs, etc.) so it won't interfere with normal dashboard interactions. It only handles taps on empty areas of the dashboard.
+
+Set `global_tap_mode: always` if you want the same tap-cycling behavior while editing dashboards or when running the card outside the Pulse kiosk (legacy mode). Use `global_tap_mode: never` to temporarily disable the global handler without removing your `secondary_urls`.
 
 This feature is particularly useful for kiosk displays where you want simple tap navigation between multiple dashboards.
 
