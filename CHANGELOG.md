@@ -1,3 +1,10 @@
+## [0.19.4](https://github.com/weirdtangent/pulse-photo-card/compare/v0.19.3...v0.19.4) (2025-11-25)
+
+
+### Bug Fixes
+
+* hui-card has it's own tap action; we need to act on 'blank' sections for our tap ([f1a2353](https://github.com/weirdtangent/pulse-photo-card/commit/f1a2353875366daca33fb0d74d3b5f83a0e567fd))
+
 ## [0.19.3](https://github.com/weirdtangent/pulse-photo-card/compare/v0.19.2...v0.19.3) (2025-11-25)
 
 
