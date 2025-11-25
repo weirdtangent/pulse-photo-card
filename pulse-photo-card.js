@@ -27,6 +27,22 @@ class PulsePhotoCard extends HTMLElement {
     this._overlayLastNowPlayingTrigger = null;
     this._overlayActive = false;
     this._overlayLastFetch = 0;
+    this._overlayMessageHandler = this._handleOverlayMessage.bind(this);
+    this._overlayMessageListenerAttached = false;
+  }
+
+  connectedCallback() {
+    if (!this._overlayMessageListenerAttached) {
+      window.addEventListener('message', this._overlayMessageHandler);
+      this._overlayMessageListenerAttached = true;
+    }
+  }
+
+  disconnectedCallback() {
+    if (this._overlayMessageListenerAttached) {
+      window.removeEventListener('message', this._overlayMessageHandler);
+      this._overlayMessageListenerAttached = false;
+    }
   }
 
   setConfig(config) {
@@ -955,6 +971,27 @@ class PulsePhotoCard extends HTMLElement {
 
     // Store the new index
     localStorage.setItem(storageKey, currentIndex.toString());
+  }
+
+  _handleOverlayMessage(event) {
+    if (
+      !event ||
+      !this._config ||
+      !this._config.secondary_urls ||
+      this._config.secondary_urls.length === 0
+    ) {
+      return;
+    }
+
+    const data = event.data;
+    if (!data || typeof data !== 'object') {
+      return;
+    }
+    if (data.source !== 'pulse-overlay' || data.type !== 'blank-tap') {
+      return;
+    }
+
+    this._handleTap();
   }
 
   _normalizePath(path) {
