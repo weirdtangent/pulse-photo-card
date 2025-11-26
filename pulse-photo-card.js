@@ -1230,18 +1230,6 @@ class PulsePhotoCard extends HTMLElement {
     }
 
     // Show/hide click-through layer when overlay is active and on photo screen
-    if (this._clickThroughLayer && this._remoteOverlayEl) {
-      if (showRemote && this._views && this._views.length > 0 && this._currentViewIndex === -1) {
-        this._clickThroughLayer.classList.add('active');
-        // Make overlay iframe allow pointer events so interactive elements work
-        // But clicks that don't hit those will bubble to our click-through layer
-        this._remoteOverlayEl.classList.add('click-through-active');
-      } else {
-        this._clickThroughLayer.classList.remove('active');
-        this._remoteOverlayEl.classList.remove('click-through-active');
-      }
-    }
-
     if (showRemote) {
       this._legacyOverlayEl.classList.add('hidden');
       // Also hide legacy Now Playing badge
@@ -1422,7 +1410,9 @@ class PulsePhotoCard extends HTMLElement {
         target.closest('a') ||
         target.closest('button') ||
         target.closest('[role="button"]') ||
-        target.closest('.nav-buttons')) {
+        target.closest('.nav-buttons') ||
+        target.closest('.overlay__content') ||
+        target.closest('.overlay--legacy')) {
       return;
     }
 
@@ -1477,11 +1467,6 @@ class PulsePhotoCard extends HTMLElement {
         this._startViewTimeout();
       }
     }, fadeMs + 100);
-    // Disable click-through layer when viewing a view (overlay should be interactive)
-    if (this._clickThroughLayer && this._remoteOverlayEl) {
-      this._clickThroughLayer.classList.remove('active');
-      this._remoteOverlayEl.classList.remove('click-through-active');
-    }
   }
 
   _goToPreviousView() {
@@ -1518,11 +1503,6 @@ class PulsePhotoCard extends HTMLElement {
     this._clearViewTimeout();
     this._hideView();
     this._updateNavigationButtons();
-    // Re-enable click-through layer when returning to photo
-    if (this._clickThroughLayer && this._remoteOverlayEl && !this._remoteOverlayEl.classList.contains('hidden')) {
-      this._clickThroughLayer.classList.add('active');
-      this._remoteOverlayEl.classList.add('click-through-active');
-    }
   }
 
   _updateNavigationButtons() {
