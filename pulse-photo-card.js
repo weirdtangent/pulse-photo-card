@@ -246,11 +246,14 @@ class PulsePhotoCard extends HTMLElement {
           gap: 1rem;
           padding: 12px 18px;
           z-index: 10;
+          transition: opacity 180ms ease;
+        }
+
+        .notification-bar.notification-bar--nav {
           background: rgba(0, 0, 0, 0.35);
           border-bottom: 1px solid rgba(255, 255, 255, 0.06);
           box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
           backdrop-filter: blur(16px);
-          transition: opacity 180ms ease;
         }
 
         .notification-bar.notification-bar--hidden {
