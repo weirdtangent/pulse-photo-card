@@ -34,6 +34,10 @@ class PulsePhotoCard extends HTMLElement {
     this._viewContentEl = null;
     this._navButtonsEl = null;
     this._notificationBarEl = null;
+    this._clickThroughLayer = null;
+    this._overlayClickBridgeReady = false;
+    this._overlayClickBridgeFallbackEnabled = false;
+    this._overlayClickBridgeTimer = null;
     this._cardHelpers = null;
     this._renderedCards = [];
     this._lovelaceContext = null;
@@ -131,7 +135,7 @@ class PulsePhotoCard extends HTMLElement {
     const customElementName = this.tagName.toLowerCase();
     const isTestByName = customElementName === 'pulse-photo-card-test';
     const showVersion = isTestVersion || isTestByName;
-    
+
     const versionPillMarkup = showVersion
       ? `
       `
@@ -685,7 +689,7 @@ class PulsePhotoCard extends HTMLElement {
       // Attach to card, but also log for debugging
       this._logToHA('debug', `setting up photo tap handler, views count: ${this._views.length}`);
       this._card.addEventListener('click', (e) => this._handlePhotoTap(e), true); // Use capture phase
-      
+
       // Also attach to frame element to catch clicks on images
       const frameEl = this.shadowRoot.querySelector('.frame');
       if (frameEl) {
@@ -744,6 +748,7 @@ class PulsePhotoCard extends HTMLElement {
     const remoteFound = !!this._remoteOverlayEl;
     this._logToHA('info', `card initialized: host=${host}, legacyOverlay=${legacyFound}, remoteOverlay=${remoteFound}, overlayEnabled=${this._overlayEnabled}`);
 
+    this._updateClickThroughLayer();
     this._handleOverlayRefreshTrigger('config');
     if (!window.__pulsePhotoCardVersionLogged) {
       try {
@@ -982,6 +987,12 @@ class PulsePhotoCard extends HTMLElement {
       this._viewTransitionTimer = null;
     }
     this._viewTransitioning = false;
+    if (this._overlayClickBridgeTimer) {
+      clearTimeout(this._overlayClickBridgeTimer);
+      this._overlayClickBridgeTimer = null;
+    }
+    this._overlayClickBridgeFallbackEnabled = false;
+    this._overlayClickBridgeReady = false;
     this._cleanupRenderedCards();
     this._updateOverlayStatus();
   }
@@ -1164,8 +1175,13 @@ class PulsePhotoCard extends HTMLElement {
       if (!response.ok) {
         throw new Error(`HTTP ${response.status}`);
       }
-      const html = await response.text();
-      this._remoteOverlayFrame.srcdoc = html;
+      const rawHtml = await response.text();
+      const overlayHtml = this._injectOverlayClickBridge(rawHtml);
+      this._remoteOverlayFrame.srcdoc = overlayHtml;
+      this._overlayClickBridgeReady = false;
+      this._overlayClickBridgeFallbackEnabled = false;
+      this._scheduleOverlayClickBridgeFallback();
+      this._updateClickThroughLayer();
       this._overlayActive = true;
       this._overlayLastFetch = Date.now();
       this._logToHA('debug', `overlay fetch succeeded (${reason || 'unknown'}), showing remote overlay`);
@@ -1176,6 +1192,10 @@ class PulsePhotoCard extends HTMLElement {
       this._logOverlayError(url, err, reason);
       this._overlayActive = false;
       this._showRemoteOverlay(false);
+      this._cancelOverlayClickBridgeFallback();
+      this._overlayClickBridgeReady = false;
+      this._overlayClickBridgeFallbackEnabled = false;
+      this._updateClickThroughLayer();
       this._updateOverlayStatus();
     }
   }
@@ -1199,7 +1219,7 @@ class PulsePhotoCard extends HTMLElement {
     } else {
       console.log(fullMessage);
     }
-    
+
     // Only send non-debug logs to HA system log
     if (!isDebug && this._hass) {
       try {
@@ -1241,6 +1261,9 @@ class PulsePhotoCard extends HTMLElement {
       }
     } else {
       this._legacyOverlayEl.classList.remove('hidden');
+      this._cancelOverlayClickBridgeFallback();
+      this._overlayClickBridgeReady = false;
+      this._overlayClickBridgeFallbackEnabled = false;
     }
 
     // Defensive check: ensure only one overlay is visible
@@ -1251,6 +1274,119 @@ class PulsePhotoCard extends HTMLElement {
       if (this._nowPlayingEl) {
         this._nowPlayingEl.classList.remove('visible');
       }
+    }
+
+    this._updateClickThroughLayer();
+  }
+
+  _injectOverlayClickBridge(html) {
+    if (!html || typeof html !== 'string') {
+      return html;
+    }
+    if (!this._overlayEnabled || !this._views || this._views.length === 0) {
+      return html;
+    }
+    if (html.includes('__pulsePhotoCardClickBridge')) {
+      return html;
+    }
+    const bridgeScript = `
+      <script>
+        (function() {
+          if (window.__pulsePhotoCardClickBridgeInstalled) {
+            try {
+              window.parent.postMessage({ type: 'pulse-photo-card-click-bridge', status: 'ready' }, '*');
+            } catch (bridgeErr) {
+              // ignore
+            }
+            return;
+          }
+          window.__pulsePhotoCardClickBridgeInstalled = true;
+          var selectors = 'a,button,input,select,textarea,label,[role="button"],[role="link"],[data-action],[data-interactive]';
+          var notifyReady = function() {
+            try {
+              window.parent.postMessage({ type: 'pulse-photo-card-click-bridge', status: 'ready' }, '*');
+            } catch (notifyErr) {
+              // ignore
+            }
+          };
+          var isInteractive = function(node) {
+            if (!node) {
+              return false;
+            }
+            if (node.nodeType === 3) {
+              node = node.parentElement;
+            }
+            while (node) {
+              if (node.matches && node.matches(selectors)) {
+                return true;
+              }
+              node = node.parentElement;
+            }
+            return false;
+          };
+          window.addEventListener('click', function(event) {
+            try {
+              var target = event.target;
+              if (isInteractive(target) || event.defaultPrevented) {
+                return;
+              }
+              window.parent.postMessage({ type: 'pulse-photo-card-click', handled: false }, '*');
+            } catch (clickErr) {
+              // ignore
+            }
+          }, true);
+          if (document.readyState === 'complete' || document.readyState === 'interactive') {
+            notifyReady();
+          } else {
+            document.addEventListener('DOMContentLoaded', notifyReady, { once: true });
+          }
+        })();
+      </script>
+    `;
+    if (html.includes('</body>')) {
+      return html.replace('</body>', `${bridgeScript}</body>`);
+    }
+    if (html.includes('</html>')) {
+      return html.replace('</html>', `${bridgeScript}</html>`);
+    }
+    return `${html}${bridgeScript}`;
+  }
+
+  _scheduleOverlayClickBridgeFallback() {
+    if (this._overlayClickBridgeTimer) {
+      clearTimeout(this._overlayClickBridgeTimer);
+    }
+    this._overlayClickBridgeTimer = window.setTimeout(() => {
+      if (!this._overlayClickBridgeReady) {
+        this._overlayClickBridgeFallbackEnabled = true;
+        this._logToHA('debug', "overlay click bridge timeout, enabling click-through fallback");
+        this._updateClickThroughLayer();
+      }
+    }, 2000);
+  }
+
+  _cancelOverlayClickBridgeFallback() {
+    if (this._overlayClickBridgeTimer) {
+      clearTimeout(this._overlayClickBridgeTimer);
+      this._overlayClickBridgeTimer = null;
+    }
+    this._overlayClickBridgeFallbackEnabled = false;
+  }
+
+  _updateClickThroughLayer() {
+    if (!this._clickThroughLayer || !this._remoteOverlayEl) {
+      return;
+    }
+    const hasViews = this._views && this._views.length > 0;
+    const onPhotoScreen = this._currentViewIndex === -1;
+    const remoteVisible = !this._remoteOverlayEl.classList.contains('hidden');
+    const shouldEnable = this._overlayClickBridgeFallbackEnabled && hasViews && onPhotoScreen && remoteVisible;
+    if (shouldEnable) {
+      this._clickThroughLayer.classList.add('active');
+      this._remoteOverlayEl.classList.add('click-through-active');
+    } else {
+      this._clickThroughLayer.classList.remove('active');
+      this._remoteOverlayEl.classList.remove('click-through-active');
     }
   }
 
@@ -1324,12 +1460,12 @@ class PulsePhotoCard extends HTMLElement {
       if (customElementName === 'pulse-photo-card-test') {
         return true;
       }
-      
+
       // Check all script tags
       const scripts = document.querySelectorAll('script[src*="pulse-photo-card"]');
       for (const script of scripts) {
         const src = script.getAttribute('src') || '';
-        if (src.includes('pulse-photo-card-test') || 
+        if (src.includes('pulse-photo-card-test') ||
             (src.includes('pulse-photo-card') && src.includes('test'))) {
           return true;
         }
@@ -1338,7 +1474,7 @@ class PulsePhotoCard extends HTMLElement {
       const moduleScripts = document.querySelectorAll('script[type="module"][src*="pulse-photo-card"]');
       for (const script of moduleScripts) {
         const src = script.getAttribute('src') || '';
-        if (src.includes('pulse-photo-card-test') || 
+        if (src.includes('pulse-photo-card-test') ||
             (src.includes('pulse-photo-card') && src.includes('test'))) {
           return true;
         }
@@ -1346,7 +1482,7 @@ class PulsePhotoCard extends HTMLElement {
       // Check if loaded via import (check import.meta if available)
       try {
         if (import.meta && import.meta.url) {
-          if (import.meta.url.includes('pulse-photo-card-test') || 
+          if (import.meta.url.includes('pulse-photo-card-test') ||
               (import.meta.url.includes('pulse-photo-card') && import.meta.url.includes('test'))) {
             return true;
           }
@@ -1361,7 +1497,7 @@ class PulsePhotoCard extends HTMLElement {
       // Check current script if available
       if (document.currentScript && document.currentScript.src) {
         const src = document.currentScript.src;
-        if (src.includes('pulse-photo-card-test') || 
+        if (src.includes('pulse-photo-card-test') ||
             (src.includes('pulse-photo-card') && src.includes('test'))) {
           return true;
         }
@@ -1462,6 +1598,7 @@ class PulsePhotoCard extends HTMLElement {
     this._clearViewTimeout(); // Clear any existing timeout
     this._renderCurrentView();
     this._updateNavigationButtons();
+    this._updateClickThroughLayer();
     // Start timeout after view is shown (after fade transition)
     const fadeMs = this._config.fade_ms || 500;
     setTimeout(() => {
@@ -1506,6 +1643,7 @@ class PulsePhotoCard extends HTMLElement {
     this._clearViewTimeout();
     this._hideView();
     this._updateNavigationButtons();
+    this._updateClickThroughLayer();
   }
 
   _updateNavigationButtons() {
@@ -1594,7 +1732,7 @@ class PulsePhotoCard extends HTMLElement {
     this._logToHA('debug', `view container classes after _showView: ${[...this._viewContainerEl.classList].join(', ')}`);
     this._viewContentEl.innerHTML = '';
     this._viewContentEl.classList.remove('view-content--sections', 'view-content--direct');
-    
+
     // Try to use HA's native view rendering first for accurate layouts (opt-in)
     if (this._config.experimental_native_views) {
       try {
@@ -1712,7 +1850,7 @@ class PulsePhotoCard extends HTMLElement {
       } else {
         this._logToHA('warning', `view has no cards or sections`);
       }
-      
+
       this._logToHA('debug', `completed rendering view ${this._currentViewIndex}: ${cardCount} cards rendered`);
     } catch (err) {
       this._logToHA('error', `failed to render view: ${err.message || String(err)}`);
@@ -1764,15 +1902,15 @@ class PulsePhotoCard extends HTMLElement {
           this._viewHasContent = true;
           this._updateNavigationButtons();
           this._clearViewRenderRetry();
-          
+
           // Wait for next frame to ensure card is in DOM
           await new Promise(resolve => requestAnimationFrame(resolve));
-          
+
           // Now set hass - this is critical for nested cards to render
           if (this._hass) {
             containerCard.hass = this._hass;
           }
-          
+
           // Force multiple hass updates to ensure nested cards render
           // Container cards often need multiple updates to render their nested cards
           const updateHass = () => {
@@ -1785,7 +1923,7 @@ class PulsePhotoCard extends HTMLElement {
           setTimeout(updateHass, 200);
           setTimeout(updateHass, 500);
           setTimeout(updateHass, 1000);
-          
+
           // Also try to trigger a config update if the card supports it
           setTimeout(() => {
             if (containerCard && containerCard.setConfig && typeof containerCard.setConfig === 'function') {
@@ -1799,7 +1937,7 @@ class PulsePhotoCard extends HTMLElement {
               }
             }
           }, 300);
-          
+
           this._logToHA('debug', `rendered container card: ${cardType} with ${cardConfig.cards?.length || 0} nested cards`);
         } else {
           this._logToHA('warning', `container card creation returned null for type: ${cardType}`);
@@ -2166,12 +2304,28 @@ class PulsePhotoCard extends HTMLElement {
   }
 
   _handleOverlayMessage(e) {
-    // Handle messages from the overlay iframe
+    if (!e || !e.data) {
+      return;
+    }
+    // Only handle messages originating from the overlay iframe
+    if (!this._remoteOverlayFrame || e.source !== this._remoteOverlayFrame.contentWindow) {
+      return;
+    }
+    const data = typeof e.data === 'object' ? e.data : {};
+    if (data.type === 'pulse-photo-card-click-bridge') {
+      if (data.status === 'ready') {
+        this._overlayClickBridgeReady = true;
+        this._cancelOverlayClickBridgeFallback();
+        this._overlayClickBridgeFallbackEnabled = false;
+        this._updateClickThroughLayer();
+      }
+      return;
+    }
     // The overlay can send { type: 'pulse-photo-card-click', handled: false } when a click wasn't handled
-    if (e.data && e.data.type === 'pulse-photo-card-click' && e.data.handled === false) {
+    if (data.type === 'pulse-photo-card-click' && data.handled === false) {
       // Only handle if we're on photo screen
       if (this._currentViewIndex === -1 && this._views && this._views.length > 0) {
-        this._logToHA('debug', 'overlay forwarded unhandled click, navigating to first view');
+        this._logToHA('debug', "overlay forwarded unhandled click, navigating to first view");
         this._goToView(0);
       }
     }
