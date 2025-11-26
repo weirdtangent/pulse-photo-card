@@ -1,3 +1,10 @@
+## [0.20.3](https://github.com/weirdtangent/pulse-photo-card/compare/v0.20.2...v0.20.3) (2025-11-26)
+
+
+### Bug Fixes
+
+* don't show notification background blur on photo screen ([217e4ef](https://github.com/weirdtangent/pulse-photo-card/commit/217e4ef4f983ac5eec35ddedcac1b7f358a9e057))
+
 ## [0.20.2](https://github.com/weirdtangent/pulse-photo-card/compare/v0.20.1...v0.20.2) (2025-11-26)
 
 
