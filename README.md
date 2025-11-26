@@ -458,10 +458,6 @@ MIT License - see [LICENSE](LICENSE) file for details.
 ## Build & Quality Status
 
 ![HACS Validation](https://img.shields.io/github/actions/workflow/status/weirdtangent/pulse-photo-card/validate.yml?branch=main&label=HACS%20validation&logo=homeassistant)
-
 ![Semantic Release](https://img.shields.io/github/actions/workflow/status/weirdtangent/pulse-photo-card/validate.yml?branch=main&label=semantic%20release&logo=semantic-release)
-
 ![Release](https://img.shields.io/github/v/release/weirdtangent/pulse-photo-card?sort=semver)
-
 ![License](https://img.shields.io/github/license/weirdtangent/pulse-photo-card)
-
