@@ -1,3 +1,10 @@
+## [0.20.4](https://github.com/weirdtangent/pulse-photo-card/compare/v0.20.3...v0.20.4) (2025-11-26)
+
+
+### Bug Fixes
+
+* add overlay click bridge fallback ([5ca7029](https://github.com/weirdtangent/pulse-photo-card/commit/5ca702927d05c921df8bfcc1f9074d3c93a2010f))
+
 ## [0.20.3](https://github.com/weirdtangent/pulse-photo-card/compare/v0.20.2...v0.20.3) (2025-11-26)
 
 
