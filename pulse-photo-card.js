@@ -1544,6 +1544,11 @@ class PulsePhotoCard extends HTMLElement {
     if (this._notificationBarEl) {
       const overlayVisible = !!(this._overlayStatusEl && !this._overlayStatusEl.classList.contains('hidden'));
       const navVisible = !this._navButtonsEl.classList.contains('hidden');
+      if (navVisible) {
+        this._notificationBarEl.classList.add('notification-bar--nav');
+      } else {
+        this._notificationBarEl.classList.remove('notification-bar--nav');
+      }
       if (!overlayVisible && !navVisible) {
         this._notificationBarEl.classList.add('notification-bar--hidden');
       } else {
