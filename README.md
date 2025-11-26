@@ -87,6 +87,129 @@ template:
 - Use HA Settings | System | Storage to mount your photo library from your network
 - The template converts file paths into `media-source://` URLs for authenticated access
 
+#### Prefer public image feeds?
+
+No personal library handy? Point the card at open-license collections instead. All of the APIs below deliver public-domain or CC0 media:
+
+| Collection | License | API Docs |
+| --- | --- | --- |
+| NASA Image & Video Library | U.S. public domain | https://images.nasa.gov/docs/images.nasa.gov_api_docs.pdf |
+| NASA Astronomy Picture of the Day | U.S. public domain | https://api.nasa.gov/ |
+| Smithsonian Open Access | CC0 (API key required) | https://edan.si.edu/openaccess/apidocs/ |
+| The Metropolitan Museum of Art | CC0 | https://collectionapi.metmuseum.org/public/collection/v1/ |
+| Art Institute of Chicago | CC0 | https://api.artic.edu/docs/ |
+| Wikimedia Commons (Public Domain subset) | Mixed, filter to PD/CC0 | https://commons.wikimedia.org/wiki/Special:ApiSandbox |
+
+Below are ready-to-paste Home Assistant snippets for the most popular feeds. Each request includes a `User-Agent` header so the CDNs don’t reject automation traffic.
+
+**NASA Image & Video Library (random topic)**
+
+Create an `input_text` helper named `input_text.pulse_nasa_topic` if you want to toggle the keyword from the UI; otherwise replace the helper reference with a literal string.
+
+```yaml
+rest:
+  - resource_template: >
+      https://images-api.nasa.gov/search?q={{ states('input_text.pulse_nasa_topic') | default('nebula') | urlencode }}&media_type=image&page={{ range(1,5) | random }}
+    headers:
+      User-Agent: PulsePhotoCard/1.0 (Home Assistant)
+    scan_interval: 900
+    sensor:
+      - name: pulse_nasa_photo_raw
+        value_template: "{{ value_json.collection.version }}"
+        json_attributes_path: "$.collection"
+        json_attributes:
+          - items
+
+template:
+  - sensor:
+      - name: pulse_nasa_photo
+        state: >
+          {% set items = state_attr('sensor.pulse_nasa_photo_raw', 'items') or [] %}
+          {% set pick = items | random if items else None %}
+          {{ pick.links[0].href if pick else 'unknown' }}
+        attributes:
+          title: "{{ pick.data[0].title if pick else '' }}"
+          photographer: "{{ pick.data[0].photographer | default('NASA') if pick else '' }}"
+```
+
+**NASA APOD (single “photo of the day”)**
+
+```yaml
+rest:
+  - resource: https://api.nasa.gov/planetary/apod?api_key=YOUR_KEY&thumbs=true
+    headers:
+      User-Agent: PulsePhotoCard/1.0 (Home Assistant)
+    scan_interval: 21600
+    sensor:
+      - name: pulse_nasa_apod
+        value_template: "{{ value_json.url }}"
+        json_attributes:
+          - title
+          - explanation
+
+template:
+  - sensor:
+      - name: pulse_nasa_apod_caption
+        state: "{{ state_attr('sensor.pulse_nasa_apod', 'title') }}"
+```
+
+**Smithsonian Open Access (API key required)**
+
+```yaml
+rest:
+  - resource_template: >
+      https://api.si.edu/openaccess/api/v1.0/search?q={{ states('input_text.pulse_smithsonian_topic') | default('space') | urlencode }}&media_type=Images&api_key=YOUR_KEY
+    headers:
+      User-Agent: PulsePhotoCard/1.0 (Home Assistant)
+    scan_interval: 1800
+    sensor:
+      - name: pulse_smithsonian_photo
+        value_template: >
+          {% set rows = value_json.response.rows %}
+          {% set pick = rows | random if rows else None %}
+          {{ pick.content.descriptiveNonRepeating.online_media.media[0].content if pick else 'unknown' }}
+        json_attributes:
+          - response
+```
+
+**The Metropolitan Museum of Art (curated object IDs)**
+
+```yaml
+rest:
+  - resource: https://collectionapi.metmuseum.org/public/collection/v1/objects/436121
+    headers:
+      User-Agent: PulsePhotoCard/1.0 (Home Assistant)
+    scan_interval: 7200
+    sensor:
+      - name: pulse_met_photo
+        value_template: "{{ value_json.primaryImage or value_json.primaryImageSmall }}"
+        json_attributes:
+          - title
+          - artistDisplayName
+          - objectDate
+```
+
+**Art Institute of Chicago (random result)**
+
+```yaml
+rest:
+  - resource: https://api.artic.edu/api/v1/artworks/search?q=landscape&fields=id,title,image_id&limit=50
+    headers:
+      User-Agent: PulsePhotoCard/1.0 (Home Assistant)
+    scan_interval: 3600
+    sensor:
+      - name: pulse_aic_photo
+        value_template: >
+          {% set data = value_json.data %}
+          {% set pick = data | random if data else None %}
+          {% set image_id = pick.image_id if pick else '' %}
+          {{ 'https://www.artic.edu/iiif/2/' ~ image_id ~ '/full/843,/0/default.jpg' if image_id else 'unknown' }}
+        json_attributes:
+          - data
+```
+
+Point the card’s `entity` at whichever sensor you prefer (or wrap them in a template switcher) and you’ll have a rotating public collection without copying files into HA’s media folder.
+
 ### 2. Create the Dashboard View
 
 Create a panel view that uses the custom card and your rotating photo URL sensor:
