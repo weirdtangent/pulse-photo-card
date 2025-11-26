@@ -1,3 +1,10 @@
+## [0.20.2](https://github.com/weirdtangent/pulse-photo-card/compare/v0.20.1...v0.20.2) (2025-11-26)
+
+
+### Bug Fixes
+
+* improve click-through layer handling ([2cc2b70](https://github.com/weirdtangent/pulse-photo-card/commit/2cc2b70f67fb1d40b6ed803a84feac7659318b97))
+
 ## [0.20.1](https://github.com/weirdtangent/pulse-photo-card/compare/v0.20.0...v0.20.1) (2025-11-25)
 
 
