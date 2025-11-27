@@ -447,8 +447,8 @@ class PulsePhotoCard extends HTMLElement {
           display: flex;
           align-items: center;
           justify-content: center;
-          width: 2.5rem;
-          height: 2.5rem;
+          width: 3.5rem;
+          height: 3.5rem;
           padding: 0;
           border: none;
           border-radius: 999px;
@@ -476,7 +476,7 @@ class PulsePhotoCard extends HTMLElement {
         }
 
         .nav-button__emoji {
-          font-size: 1.2rem;
+          font-size: 1.4rem;
           line-height: 1;
           font-family: "Noto Color Emoji", "Inter", "Segoe UI", "Helvetica Neue", sans-serif;
         }
