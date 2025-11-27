@@ -1,3 +1,10 @@
+## [0.22.1](https://github.com/weirdtangent/pulse-photo-card/compare/v0.22.0...v0.22.1) (2025-11-27)
+
+
+### Bug Fixes
+
+* update navigation button sizes for easier touch-screen navigation ([fd4ff7a](https://github.com/weirdtangent/pulse-photo-card/commit/fd4ff7a52665bf3adcd285e59f02b639715b43ad))
+
 # [0.22.0](https://github.com/weirdtangent/pulse-photo-card/compare/v0.21.0...v0.22.0) (2025-11-27)
 
 
