@@ -46,6 +46,7 @@ class PulsePhotoCard extends HTMLElement {
     this._viewHasContent = false;
     this._viewTransitioning = false;
     this._viewTransitionTimer = null;
+    this._editModeActive = false;
   }
 
   // ============================================================================
@@ -666,6 +667,7 @@ class PulsePhotoCard extends HTMLElement {
     this._navButtonsEl = this.shadowRoot.querySelector('.nav-buttons');
     this._notificationBarEl = this.shadowRoot.querySelector('.notification-bar');
     this._clickThroughLayer = this.shadowRoot.querySelector('.click-through-layer');
+    this._updateEditModeState(true);
 
     // Set up navigation button handlers
     if (this._navButtonsEl && hasViews) {
@@ -770,6 +772,7 @@ class PulsePhotoCard extends HTMLElement {
     if (!this._config) {
       return;
     }
+    this._updateEditModeState();
 
     const entity = hass.states?.[this._config.entity];
     if (entity) {
@@ -1116,6 +1119,9 @@ class PulsePhotoCard extends HTMLElement {
   }
 
   _handleOverlayRefreshTrigger(source) {
+    if (this._editModeActive) {
+      return;
+    }
     if (!this._overlayEnabled || !this._overlayUrl || !this.isConnected) {
       return;
     }
@@ -1166,7 +1172,7 @@ class PulsePhotoCard extends HTMLElement {
   }
 
   async _fetchOverlayRemote({ reason, cacheKey } = {}) {
-    if (!this._overlayUrl || !this._remoteOverlayFrame) {
+    if (this._editModeActive || !this._overlayUrl || !this._remoteOverlayFrame) {
       return;
     }
     const url = this._appendCacheBuster(this._overlayUrl, cacheKey || `${reason || 'poll'}-${Date.now()}`);
@@ -1245,7 +1251,8 @@ class PulsePhotoCard extends HTMLElement {
     }
 
     if (this._remoteOverlayEl) {
-      if (showRemote) {
+      const shouldShowRemote = showRemote && !this._editModeActive;
+      if (shouldShowRemote) {
         this._remoteOverlayEl.classList.remove('hidden');
       } else {
         this._remoteOverlayEl.classList.add('hidden');
@@ -1253,7 +1260,7 @@ class PulsePhotoCard extends HTMLElement {
     }
 
     // Show/hide click-through layer when overlay is active and on photo screen
-    if (showRemote) {
+    if (showRemote && !this._editModeActive) {
       this._legacyOverlayEl.classList.add('hidden');
       // Also hide legacy Now Playing badge
       if (this._nowPlayingEl) {
@@ -1402,6 +1409,10 @@ class PulsePhotoCard extends HTMLElement {
     if (!this._overlayStatusEl) {
       return;
     }
+    if (this._editModeActive) {
+      this._overlayStatusEl.classList.add('hidden');
+      return;
+    }
     const emojiEl = this._overlayStatusEl.querySelector('.overlay-status__emoji');
     const textEl = this._overlayStatusEl.querySelector('.overlay-status__text');
     if (!emojiEl || !textEl) {
@@ -1528,6 +1539,9 @@ class PulsePhotoCard extends HTMLElement {
   // Photo Tap & Navigation Handling
   // ============================================================================
   _handlePhotoTap(e) {
+    if (this._isDashboardEditMode()) {
+      return;
+    }
     // Skip tap handling if disable_km parameter is present (used for editing)
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.has('disable_km')) {
@@ -2046,6 +2060,47 @@ class PulsePhotoCard extends HTMLElement {
       hasActiveTimeout: Boolean(this._viewTimeoutTimer),
       lastLog: new Date().toISOString(),
     };
+  }
+
+  _isDashboardEditMode() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const value = params.get('edit');
+      if (!value) {
+        return false;
+      }
+      return value === '1' || value.toLowerCase() === 'true';
+    } catch (err) {
+      return false;
+    }
+  }
+
+  _updateEditModeState(force = false) {
+    const isEditing = this._isDashboardEditMode();
+    const previousState = this._editModeActive;
+    const stateChanged = previousState !== isEditing;
+    if (!force && !stateChanged) {
+      return;
+    }
+
+    this._editModeActive = isEditing;
+    if (isEditing) {
+      if (stateChanged) {
+        this._logToHA('info', "dashboard edit mode detected via edit=1; temporarily disabling overlays");
+      }
+      this._overlayActive = false;
+      this._showRemoteOverlay(false);
+      this._updateOverlayStatus();
+      return;
+    }
+
+    if (stateChanged) {
+      this._logToHA('info', "dashboard edit mode exited; resuming overlay rendering");
+    }
+    this._updateOverlayStatus();
+    if (this._overlayEnabled) {
+      this._handleOverlayRefreshTrigger('edit_exit');
+    }
   }
 
   // ============================================================================

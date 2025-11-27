@@ -438,6 +438,7 @@ If the overlay endpoint can't be reached, the card automatically falls back to i
 - **401 Unauthorized in console** → You're hitting `/local/...` or added your own query parameters. Let the card resolve the media-source path; don't append cache busters, the signed `authSig` already handles caching.
 - **Still using old JS** → Bump the resource version (`/local/pulse-photo-card.js?v=2`) or use Advanced Mode → Resources → Reload.
 - **Clock not updating** → Hard-refresh the dashboard (Cmd/Ctrl + Shift + R) after saving to ensure the browser loads the latest card code.
+- **Can't click the three-line menu / edit controls** → Append `disable_km=1` to your dashboard URL to temporarily disable kiosk-mode while editing, and add `edit=1` so Home Assistant exposes the editor pane. With both parameters set you can scroll down to the **Edit** button, kiosk-mode stays off, and the card automatically disables its tap overlay so nothing blocks the UI. For example: `http://homeassistant.local:8123/dashboard-pulse/home?disable_km=1&edit=1`.
 
 ## Customization
 
