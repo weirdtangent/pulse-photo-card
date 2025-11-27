@@ -193,6 +193,10 @@ class PulsePhotoCard extends HTMLElement {
 
     this.shadowRoot.innerHTML = `
       <style>
+        :host {
+          --pulse-notification-bar-offset: 90px;
+        }
+
         :host,
         ha-card {
           height: 100vh;
@@ -504,15 +508,15 @@ class PulsePhotoCard extends HTMLElement {
 
         .view-content {
           position: absolute;
-          top: 0;
+          top: var(--pulse-notification-bar-offset, 90px);
           left: 0;
           right: 0;
           bottom: 0;
           overflow-y: auto;
           overflow-x: hidden;
           padding: 1rem;
-          padding-top: 90px;
-          min-height: 100%;
+          padding-top: 1.5rem;
+          min-height: calc(100% - var(--pulse-notification-bar-offset, 90px));
           box-sizing: border-box;
           margin: 0 auto;
           width: min(1800px, 100%);
@@ -523,7 +527,7 @@ class PulsePhotoCard extends HTMLElement {
 
         .view-content > .embedded-ha-view {
           width: 100%;
-          min-height: calc(100vh - 70px);
+          min-height: calc(100vh - var(--pulse-notification-bar-offset, 90px));
           box-sizing: border-box;
         }
 
