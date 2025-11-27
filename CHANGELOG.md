@@ -1,3 +1,10 @@
+# [0.21.0](https://github.com/weirdtangent/pulse-photo-card/compare/v0.20.4...v0.21.0) (2025-11-27)
+
+
+### Features
+
+* add edit mode support which disables the overlay and tap overlay handling ([d84a371](https://github.com/weirdtangent/pulse-photo-card/commit/d84a37158f2fc44108d74de079966ea3859b5780))
+
 ## [0.20.4](https://github.com/weirdtangent/pulse-photo-card/compare/v0.20.3...v0.20.4) (2025-11-26)
 
 
