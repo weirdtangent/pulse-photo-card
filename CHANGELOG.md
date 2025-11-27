@@ -1,3 +1,10 @@
+# [0.22.0](https://github.com/weirdtangent/pulse-photo-card/compare/v0.21.0...v0.22.0) (2025-11-27)
+
+
+### Features
+
+* the dashboard section is 90px smaller ([7ad3767](https://github.com/weirdtangent/pulse-photo-card/commit/7ad3767a466209e26d166ea97e59097df556a09d))
+
 # [0.21.0](https://github.com/weirdtangent/pulse-photo-card/compare/v0.20.4...v0.21.0) (2025-11-27)
 
 
