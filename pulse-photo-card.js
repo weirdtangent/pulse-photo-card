@@ -726,6 +726,8 @@ class PulsePhotoCard extends HTMLElement {
       }
 
       // Set up message listener for overlay iframe clicks
+      // Remove first to prevent duplicates if setConfig is called multiple times
+      window.removeEventListener('message', this._handleOverlayMessageBound);
       window.addEventListener('message', this._handleOverlayMessageBound);
     }
 
