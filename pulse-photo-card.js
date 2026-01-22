@@ -47,6 +47,9 @@ class PulsePhotoCard extends HTMLElement {
     this._viewTransitioning = false;
     this._viewTransitionTimer = null;
     this._editModeActive = false;
+    // Bound event listener references for proper cleanup
+    this._handlePhotoTapBound = null;
+    this._handleOverlayMessageBound = null;
   }
 
   // ============================================================================
@@ -694,31 +697,32 @@ class PulsePhotoCard extends HTMLElement {
     if (hasViews) {
       // Attach to card, but also log for debugging
       this._logToHA('debug', `setting up photo tap handler, views count: ${this._views.length}`);
-      this._card.addEventListener('click', (e) => this._handlePhotoTap(e), true); // Use capture phase
+
+      // Create bound handlers for proper cleanup in disconnectedCallback
+      this._handlePhotoTapBound = (e) => this._handlePhotoTap(e);
+      this._handleOverlayMessageBound = (e) => this._handleOverlayMessage(e);
+
+      this._card.addEventListener('click', this._handlePhotoTapBound, true); // Use capture phase
 
       // Also attach to frame element to catch clicks on images
       const frameEl = this.shadowRoot.querySelector('.frame');
       if (frameEl) {
-        frameEl.addEventListener('click', (e) => this._handlePhotoTap(e), true);
+        frameEl.addEventListener('click', this._handlePhotoTapBound, true);
       }
 
       // Attach to view container to handle clicks in views
       if (this._viewContainerEl) {
-        this._viewContainerEl.addEventListener('click', (e) => this._handlePhotoTap(e), true);
+        this._viewContainerEl.addEventListener('click', this._handlePhotoTapBound, true);
       }
 
       // Set up click-through layer handler
       // This layer sits between the card and overlay, catching clicks that don't hit overlay interactive elements
       if (this._clickThroughLayer) {
-        this._clickThroughLayer.addEventListener('click', (e) => {
-          // This will only fire if the click doesn't hit an interactive element in the overlay
-          // because those have pointer-events: auto and will stop propagation
-          this._handlePhotoTap(e);
-        }, true);
+        this._clickThroughLayer.addEventListener('click', this._handlePhotoTapBound, true);
       }
 
       // Set up message listener for overlay iframe clicks
-      window.addEventListener('message', (e) => this._handleOverlayMessage(e));
+      window.addEventListener('message', this._handleOverlayMessageBound);
     }
 
     this._startClock();
@@ -1002,6 +1006,19 @@ class PulsePhotoCard extends HTMLElement {
     this._overlayClickBridgeReady = false;
     this._cleanupRenderedCards();
     this._updateOverlayStatus();
+
+    // Remove event listeners to prevent memory leaks on reconnect
+    if (this._handleOverlayMessageBound) {
+      window.removeEventListener('message', this._handleOverlayMessageBound);
+    }
+    if (this._handlePhotoTapBound) {
+      this._card?.removeEventListener('click', this._handlePhotoTapBound, true);
+      this.shadowRoot?.querySelector('.frame')?.removeEventListener('click', this._handlePhotoTapBound, true);
+      this._viewContainerEl?.removeEventListener('click', this._handlePhotoTapBound, true);
+      this._clickThroughLayer?.removeEventListener('click', this._handlePhotoTapBound, true);
+    }
+    this._handlePhotoTapBound = null;
+    this._handleOverlayMessageBound = null;
   }
 
   _startClock() {
@@ -1099,7 +1116,6 @@ class PulsePhotoCard extends HTMLElement {
     if (!this._overlayEnabled) {
       this._overlayUrl = null;
     }
-    const hostname = host || 'none';
     this._logToHA('debug', `overlay config: enabled=${this._overlayEnabled}, url=${this._overlayUrl || 'none'}, refreshEntity=${this._overlayRefreshEntity || 'none'}, pollMs=${this._overlayPollMs}`);
     this._updateOverlayStatus();
   }
@@ -1290,6 +1306,11 @@ class PulsePhotoCard extends HTMLElement {
     this._updateClickThroughLayer();
   }
 
+  // Injects a click-bridge script into overlay HTML for iframe-to-parent communication.
+  // Security note: postMessage uses '*' as targetOrigin because the iframe content (from PulseOS)
+  // cannot know the parent window's origin ahead of time. This is the standard pattern for
+  // cross-origin iframe communication. Security is enforced on the receiving end in
+  // _handleOverlayMessage() by validating e.source matches the expected iframe contentWindow.
   _injectOverlayClickBridge(html) {
     if (!html || typeof html !== 'string') {
       return html;
@@ -1670,7 +1691,6 @@ class PulsePhotoCard extends HTMLElement {
     }
 
     const isOnPhoto = this._currentViewIndex === -1;
-    const isOnFirstView = this._currentViewIndex === 0;
     const isOnLastView = this._currentViewIndex === this._views.length - 1;
     const isTransitioning = this._viewTransitioning;
 
@@ -1929,8 +1949,12 @@ class PulsePhotoCard extends HTMLElement {
             containerCard.hass = this._hass;
           }
 
-          // Force multiple hass updates to ensure nested cards render
-          // Container cards often need multiple updates to render their nested cards
+          // Force multiple hass updates to ensure nested cards render.
+          // Container cards (vertical-stack, grid, etc.) often have nested cards that render
+          // asynchronously and may not be ready immediately. Different cards initialize at
+          // different speeds depending on their complexity and data dependencies.
+          // The staggered timing (50ms → 1000ms) covers both fast and slow initializers,
+          // ensuring hass is available when each nested card is ready to receive it.
           const updateHass = () => {
             if (containerCard && this._hass) {
               containerCard.hass = this._hass;
