@@ -698,9 +698,13 @@ class PulsePhotoCard extends HTMLElement {
       // Attach to card, but also log for debugging
       this._logToHA('debug', `setting up photo tap handler, views count: ${this._views.length}`);
 
-      // Create bound handlers for proper cleanup in disconnectedCallback
-      this._handlePhotoTapBound = (e) => this._handlePhotoTap(e);
-      this._handleOverlayMessageBound = (e) => this._handleOverlayMessage(e);
+      // Create bound handlers for proper cleanup in disconnectedCallback (only if not already created)
+      if (!this._handlePhotoTapBound) {
+        this._handlePhotoTapBound = (e) => this._handlePhotoTap(e);
+      }
+      if (!this._handleOverlayMessageBound) {
+        this._handleOverlayMessageBound = (e) => this._handleOverlayMessage(e);
+      }
 
       this._card.addEventListener('click', this._handlePhotoTapBound, true); // Use capture phase
 
