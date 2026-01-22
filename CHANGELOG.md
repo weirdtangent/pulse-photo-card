@@ -1,3 +1,12 @@
+## [0.22.2](https://github.com/weirdtangent/pulse-photo-card/compare/v0.22.1...v0.22.2) (2026-01-22)
+
+
+### Bug Fixes
+
+* memory leak and code maintenance cleanup ([e969a54](https://github.com/weirdtangent/pulse-photo-card/commit/e969a548872097a3a9580ebcc76e3dc3e36b7a30))
+* remove window message listener before adding to prevent duplicates ([012968a](https://github.com/weirdtangent/pulse-photo-card/commit/012968ac1d517d04f06691e140a0e781cc54f9d8))
+* reuse existing bound handlers to prevent leak on setConfig re-calls ([e11be56](https://github.com/weirdtangent/pulse-photo-card/commit/e11be567a432ec4a76a559c98ed34bebfea5db80))
+
 ## [0.22.1](https://github.com/weirdtangent/pulse-photo-card/compare/v0.22.0...v0.22.1) (2025-11-27)
 
 
