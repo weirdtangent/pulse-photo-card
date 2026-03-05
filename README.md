@@ -456,6 +456,10 @@ This card was originally created for [Pulse OS](https://github.com/weirdtangent/
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
+## Contributors
+
+- [@weirdtangent](https://github.com/weirdtangent)
+
 ## Build & Quality Status
 
 ![HACS Validation](https://img.shields.io/github/actions/workflow/status/weirdtangent/pulse-photo-card/validate.yml?branch=main&label=HACS%20validation&logo=homeassistant)
