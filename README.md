@@ -433,7 +433,7 @@ If the overlay endpoint can't be reached, the card automatically falls back to i
 
 ## Troubleshooting
 
-- **Black screen** → The helper returned a path HA can't serve. Verify `sensor.pulse_current_photo_url` looks like `media-source://media_source/local/...`.
+- **Black screen** → The helper returned a path HA can't serve. Verify `sensor.pulse_current_photo_url` looks like `media-source://media_source/local/...`. If the source sensor is **empty/unknown/unavailable** (e.g. the photo folder is empty or unreadable), the card now shows a small on-screen notice explaining why and logs a `warning` to the HA system log (`pulse-photo-card: no photo to display: …`) instead of failing silently — check **Settings → System → Logs** or the Logbook for the reason.
 - **Overlay iframe missing / Now Playing auto entity unavailable** → Home Assistant can't resolve your `PULSE_HOST`. Add a DNS/hosts entry or use an IP so the HA host can reach the overlay endpoint (the card already tries `<pulse_host>.local` when no domain is provided).
 - **401 Unauthorized in console** → You're hitting `/local/...` or added your own query parameters. Let the card resolve the media-source path; don't append cache busters, the signed `authSig` already handles caching.
 - **Still using old JS** → Bump the resource version (`/local/pulse-photo-card.js?v=2`) or use Advanced Mode → Resources → Reload.

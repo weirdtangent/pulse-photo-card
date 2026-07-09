@@ -11,6 +11,8 @@ class PulsePhotoCard extends HTMLElement {
     this._nowPlayingEl = null;
     this._nowPlayingLabelEl = null;
     this._nowPlayingTextEl = null;
+    this._noPhotoNoticeEl = null;
+    this._noPhotoReason = null;
     this._nowPlayingLastText = '';
     this._resolvedNowPlayingEntity = null;
     this._legacyOverlayEl = null;
@@ -789,14 +791,18 @@ class PulsePhotoCard extends HTMLElement {
     this._updateEditModeState();
 
     const entity = hass.states?.[this._config.entity];
-    if (entity) {
-      const newRaw = entity.state;
-      if (newRaw && newRaw !== 'unknown' && newRaw !== 'unavailable') {
-        if (newRaw !== this._currentRaw || !this._currentUrl) {
-          this._currentRaw = newRaw;
-          this._loadNewImage(newRaw);
-        }
+    const rawState = entity ? entity.state : null;
+    const hasPhoto = rawState && rawState !== 'unknown' && rawState !== 'unavailable';
+    if (hasPhoto) {
+      if (rawState !== this._currentRaw || !this._currentUrl) {
+        this._currentRaw = rawState;
+        this._loadNewImage(rawState);
       }
+      this._clearNoPhotoNotice();
+    } else {
+      // Entity missing, or its state is empty/unknown/unavailable -> no photo to
+      // show. Instead of failing silently to a black screen, surface why.
+      this._handleMissingPhoto(entity, rawState);
     }
 
     this._updateNowPlaying();
@@ -830,6 +836,76 @@ class PulsePhotoCard extends HTMLElement {
 
     this._logToHA('debug', `loading photo: ${resolvedUrl.substring(0, 100)}...`);
     this._swapImage(resolvedUrl);
+  }
+
+  // Called when the configured entity is missing or has no usable photo state
+  // (empty string / unknown / unavailable). Logs the reason once per transition
+  // (set hass fires on every state change, so we must not spam the HA log) and
+  // shows a small on-screen notice so the failure isn't an unexplained black
+  // screen.
+  _handleMissingPhoto(entity, rawState) {
+    const entityId = this._config?.entity || '(unset)';
+    let reason;
+    if (!entity) {
+      reason = `photo entity '${entityId}' was not found in Home Assistant`;
+    } else if (rawState === '' || rawState === null || rawState === undefined) {
+      reason =
+        `photo sensor '${entityId}' is empty — no image was found ` +
+        `(the source folder may be empty or unreadable)`;
+    } else {
+      reason = `photo sensor '${entityId}' is ${rawState}`;
+    }
+
+    if (reason !== this._noPhotoReason) {
+      this._noPhotoReason = reason;
+      this._logToHA('warning', `no photo to display: ${reason}`);
+    }
+    this._showNoPhotoNotice(reason);
+  }
+
+  _ensureNoPhotoNotice() {
+    if (this._noPhotoNoticeEl || !this.shadowRoot) {
+      return this._noPhotoNoticeEl;
+    }
+    const el = document.createElement('div');
+    el.className = 'pulse-no-photo-notice';
+    el.setAttribute('role', 'status');
+    el.style.cssText = [
+      'position:absolute',
+      'left:50%',
+      'bottom:6%',
+      'transform:translateX(-50%)',
+      'max-width:80%',
+      'padding:0.5em 0.9em',
+      'border-radius:0.6em',
+      'background:rgba(0,0,0,0.55)',
+      'color:rgba(255,255,255,0.92)',
+      'font-size:0.9rem',
+      'line-height:1.35',
+      'text-align:center',
+      'z-index:50',
+      'pointer-events:none',
+      'backdrop-filter:blur(2px)',
+    ].join(';');
+    (this._card || this.shadowRoot).appendChild(el);
+    this._noPhotoNoticeEl = el;
+    return el;
+  }
+
+  _showNoPhotoNotice(reason) {
+    const el = this._ensureNoPhotoNotice();
+    if (!el) {
+      return;
+    }
+    el.textContent = `⚠ No photo: ${reason}`;
+    el.style.display = 'block';
+  }
+
+  _clearNoPhotoNotice() {
+    this._noPhotoReason = null;
+    if (this._noPhotoNoticeEl) {
+      this._noPhotoNoticeEl.style.display = 'none';
+    }
   }
 
   async _resolveUrl(rawPath) {
