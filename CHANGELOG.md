@@ -1,3 +1,10 @@
+# [0.23.0](https://github.com/weirdtangent/pulse-photo-card/compare/v0.22.2...v0.23.0) (2026-07-09)
+
+
+### Features
+
+* surface a reason when there is no photo instead of black screen ([3dce786](https://github.com/weirdtangent/pulse-photo-card/commit/3dce786efe27320a2a7dff42469558413bbecd47))
+
 ## [0.22.2](https://github.com/weirdtangent/pulse-photo-card/compare/v0.22.1...v0.22.2) (2026-01-22)
 
 
