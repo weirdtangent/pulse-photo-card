@@ -393,6 +393,8 @@ views:
 ```
 
 Point `PULSE_URL` at the kiosk view (e.g., `http://homeassistant.local:8123/pulse-home?sidebar=hide`). [PulseOS](https://github.com/weirdtangent/pulse-os) already adds `?pulse_host=<hostname>` when launching dashboards, so each kiosk keeps its own overlay and Now Playing badge. Append `?disable_km` to the URL while configuring if you need to expose the Lovelace edit/UI buttons again.
+
+> **HA 2026.8+ note:** new Home Assistant OS installs serve on **port 80**, so omit `:8123` (e.g. `http://homeassistant.local/pulse-home?sidebar=hide`) if your instance uses the new default. Existing installs keep whatever port they already used.
 ## Configuration Options
 
 | Option | Type | Default | Description |
