@@ -4,6 +4,8 @@ class PulsePhotoCard extends HTMLElement {
     this._frontLayer = 'a';
     this._currentRaw = undefined;
     this._currentUrl = undefined;
+    this._failedRaw = undefined;
+    this._lastResolveError = undefined;
     this._pendingLoadId = 0;
     this._clockInterval = null;
     this._timeEl = null;
@@ -794,7 +796,16 @@ class PulsePhotoCard extends HTMLElement {
     const rawState = entity ? entity.state : null;
     const hasPhoto = rawState && rawState !== 'unknown' && rawState !== 'unavailable';
     if (hasPhoto) {
-      if (rawState !== this._currentRaw || !this._currentUrl) {
+      // `!this._currentUrl` is what lets a card that has never loaded an image
+      // retry on the next hass push. But a path that FAILS to resolve never sets
+      // _currentUrl, so that same clause re-fires on every subsequent push --
+      // and hass updates arrive many times a second. One unresolvable photo on a
+      // freshly-loaded card therefore produced 142 warnings across three kiosks
+      // inside a single 30-minute window, four of them within 0.6ms. Skipping a
+      // path we have already failed on breaks that loop while still allowing a
+      // retry as soon as the slideshow moves to a different photo.
+      const alreadyFailed = rawState === this._failedRaw;
+      if ((rawState !== this._currentRaw || !this._currentUrl) && !alreadyFailed) {
         this._currentRaw = rawState;
         this._loadNewImage(rawState);
       }
@@ -823,7 +834,14 @@ class PulsePhotoCard extends HTMLElement {
     const resolvedUrl = await this._resolveUrl(rawPath);
 
     if (!resolvedUrl) {
-      this._logToHA('warning', `photo URL resolution failed for: ${rawPath}`);
+      // Record the failure so `set hass` stops re-attempting this same path.
+      this._failedRaw = rawPath;
+      // _resolveUrl puts the underlying cause on this._lastResolveError rather
+      // than only console.error()-ing it: the browser console is invisible from
+      // Home Assistant, so without this the warning says a photo failed and
+      // gives no way at all to find out why.
+      const cause = this._lastResolveError ? ` - ${this._lastResolveError}` : '';
+      this._logToHA('warning', `photo URL resolution failed for: ${rawPath}${cause}`);
       return;
     }
     if (loadId !== this._pendingLoadId) {
@@ -834,6 +852,7 @@ class PulsePhotoCard extends HTMLElement {
       return;
     }
 
+    this._failedRaw = undefined;
     this._logToHA('debug', `loading photo: ${resolvedUrl.substring(0, 100)}...`);
     this._swapImage(resolvedUrl);
   }
@@ -909,6 +928,8 @@ class PulsePhotoCard extends HTMLElement {
   }
 
   async _resolveUrl(rawPath) {
+    this._lastResolveError = undefined;
+
     if (!rawPath) {
       return null;
     }
@@ -923,7 +944,9 @@ class PulsePhotoCard extends HTMLElement {
         if (resolved?.url) {
           return this._hass.hassUrl(resolved.url);
         }
+        this._lastResolveError = 'resolve_media returned no url';
       } catch (err) {
+        this._lastResolveError = err?.message || err?.error || String(err);
         console.error('pulse-photo-card: failed to resolve media source', err);
         return null;
       }
