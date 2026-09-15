@@ -1,3 +1,10 @@
+## [0.23.1](https://github.com/weirdtangent/pulse-photo-card/compare/v0.23.0...v0.23.1) (2026-09-15)
+
+
+### Bug Fixes
+
+* stop retry storm and surface the cause when a photo fails to resolve ([3c67112](https://github.com/weirdtangent/pulse-photo-card/commit/3c67112d76d007077b4997eecb69385c71b7117f))
+
 # [0.23.0](https://github.com/weirdtangent/pulse-photo-card/compare/v0.22.2...v0.23.0) (2026-07-09)
 
 
