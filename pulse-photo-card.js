@@ -30,6 +30,9 @@ class PulsePhotoCard extends HTMLElement {
     this._overlayLastNowPlayingTrigger = null;
     this._overlayActive = false;
     this._overlayLastFetch = 0;
+    // Content signature of the overlay document currently loaded in the iframe, used to
+    // skip reassigning srcdoc when a poll returns the same overlay we are already showing.
+    this._overlaySignature = null;
     this._views = [];
     this._currentViewIndex = -1;
     this._viewTimeoutTimer = null;
@@ -1308,6 +1311,21 @@ class PulsePhotoCard extends HTMLElement {
       }
       const rawHtml = await response.text();
       const overlayHtml = this._injectOverlayClickBridge(rawHtml);
+      const signature = this._overlaySignatureOf(overlayHtml);
+      // Assigning srcdoc tears the overlay document down and builds a new window, which
+      // is expensive (a full re-parse every poll on every kiosk) and destructive: any
+      // state the overlay keeps in its own window is lost. That cost bought nothing
+      // whenever the poll returned what we are already showing, which — measured on a
+      // kiosk — is the common case, since the only byte that differs between two idle
+      // renders is the generated-at timestamp. Real changes (a timer, a ticker price,
+      // a version bump) still differ, so they still swap.
+      if (this._overlayActive && signature === this._overlaySignature) {
+        this._overlayLastFetch = Date.now();
+        this._logToHA('debug', `overlay fetch succeeded (${reason || 'unknown'}), unchanged — keeping current document`);
+        this._updateOverlayStatus();
+        return;
+      }
+      this._overlaySignature = signature;
       this._remoteOverlayFrame.srcdoc = overlayHtml;
       this._overlayClickBridgeReady = false;
       this._overlayClickBridgeFallbackEnabled = false;
@@ -1322,6 +1340,7 @@ class PulsePhotoCard extends HTMLElement {
       console.warn('pulse-photo-card: overlay fetch failed', err);
       this._logOverlayError(url, err, reason);
       this._overlayActive = false;
+      this._overlaySignature = null;
       this._showRemoteOverlay(false);
       this._cancelOverlayClickBridgeFallback();
       this._overlayClickBridgeReady = false;
@@ -1416,6 +1435,16 @@ class PulsePhotoCard extends HTMLElement {
   // cannot know the parent window's origin ahead of time. This is the standard pattern for
   // cross-origin iframe communication. Security is enforced on the receiving end in
   // _handleOverlayMessage() by validating e.source matches the expected iframe contentWindow.
+  _overlaySignatureOf(html) {
+    if (typeof html !== 'string') {
+      return null;
+    }
+    // data-generated-at is stamped on every render and is the ONLY thing that differs
+    // between two renders of an unchanged overlay, so comparing raw bytes would never
+    // match and the skip above would never fire.
+    return html.replace(/\sdata-generated-at="[^"]*"/, '');
+  }
+
   _injectOverlayClickBridge(html) {
     if (!html || typeof html !== 'string') {
       return html;
