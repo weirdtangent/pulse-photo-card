@@ -1,3 +1,10 @@
+## [0.23.2](https://github.com/weirdtangent/pulse-photo-card/compare/v0.23.1...v0.23.2) (2026-09-22)
+
+
+### Performance Improvements
+
+* stop rebuilding the overlay document when nothing changed ([#13](https://github.com/weirdtangent/pulse-photo-card/issues/13)) ([fc03919](https://github.com/weirdtangent/pulse-photo-card/commit/fc0391989ef76740abc8f183faac0a49c4cb752b)), closes [pulse-os#280](https://github.com/pulse-os/issues/280)
+
 ## [0.23.1](https://github.com/weirdtangent/pulse-photo-card/compare/v0.23.0...v0.23.1) (2026-09-15)
 
 
